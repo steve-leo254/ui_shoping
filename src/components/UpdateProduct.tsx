@@ -3,8 +3,6 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import PopupContainer from "./PopUp";
 
-
-
 type Product = {
   id: number;
   name: string;
@@ -14,7 +12,9 @@ type Product = {
   stock_quantity: number;
   created_at?: string;
   barcode: number;
-  user_id: number;
+  brand?: string;
+  category_id?: number;
+  description?: string;
 };
 
 interface UpdateProductsProps {
@@ -32,7 +32,6 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
     const selectedId = Number(e.target.value);
     setIdToUpdate(selectedId);
 
-    // Pre-fill form with selected product's data
     const selectedProduct = products.find((p) => p.id === selectedId);
     if (selectedProduct) {
       setFormData({
@@ -42,11 +41,16 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
         stock_quantity: selectedProduct.stock_quantity,
         barcode: selectedProduct.barcode,
         img_url: selectedProduct.img_url,
+        brand: selectedProduct.brand,
+        category_id: selectedProduct.category_id,
+        description: selectedProduct.description,
       });
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -79,13 +83,12 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
         throw new Error("Authentication token not found");
       }
 
-      // Create clean payload with only changed fields
       const payload = Object.fromEntries(
         Object.entries(formData).filter(([_, v]) => v !== undefined)
       );
 
       const response = await axios.put(
-        `http://localhost:5000/update-product/${idToUpdate}`,
+        `http://localhost:5000/update-product/${idToUpdate}`, // Updated port to 5000
         payload,
         {
           headers: {
@@ -101,7 +104,6 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
       }
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        // Handle different types of API errors
         if (err.response?.status === 422) {
           setError("Validation error: Please check your input values");
         } else {
@@ -115,9 +117,9 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
       setIsUpdating(false);
     }
   };
+
   return (
     <>
-      {/* <!-- Update modal --> */}
       <div
         id="updateProductModal"
         tabIndex={-1}
@@ -125,9 +127,7 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
         className="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full"
       >
         <div className="relative p-4 w-full max-w-2xl max-h-full">
-          {/* <!-- Modal content --> */}
           <div className="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
-            {/* <!-- Modal header --> */}
             <div className="flex justify-between items-center pb-4 mb-4 rounded-t border-b sm:mb-5 dark:border-gray-600">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Update Product
@@ -145,15 +145,14 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
-                    fill-rule="evenodd"
+                    fillRule="evenodd"
                     d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clip-rule="evenodd"
+                    clipRule="evenodd"
                   />
                 </svg>
                 <span className="sr-only">Close modal</span>
               </button>
             </div>
-            {/* <!-- Modal body --> */}
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 mb-4 sm:grid-cols-2">
                 <div>
@@ -178,7 +177,6 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
                     ))}
                   </select>
                 </div>
-
                 <div>
                   <label
                     htmlFor="name"
@@ -197,7 +195,6 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
                     required
                   />
                 </div>
-
                 <div>
                   <label
                     htmlFor="price"
@@ -217,7 +214,6 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
                     required
                   />
                 </div>
-
                 <div>
                   <label
                     htmlFor="cost"
@@ -236,7 +232,6 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
                     step="0.01"
                   />
                 </div>
-
                 <div>
                   <label
                     htmlFor="stock_quantity"
@@ -254,7 +249,6 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
                     placeholder="Stock quantity"
                   />
                 </div>
-
                 <div>
                   <label
                     htmlFor="barcode"
@@ -272,8 +266,74 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
                     placeholder="Barcode"
                   />
                 </div>
+                <div>
+                  <label
+                    htmlFor="brand"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Brand
+                  </label>
+                  <input
+                    type="text"
+                    name="brand"
+                    id="brand"
+                    value={formData.brand || ""}
+                    onChange={handleInputChange}
+                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                    placeholder="Product brand"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="category_id"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Category ID
+                  </label>
+                  <input
+                    type="number"
+                    name="category_id"
+                    id="category_id"
+                    value={formData.category_id || ""}
+                    onChange={handleNumberInputChange}
+                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                    placeholder="Category ID"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label
+                    htmlFor="description"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    id="description"
+                    value={formData.description || ""}
+                    onChange={handleInputChange}
+                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                    placeholder="Product description"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="img_url"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Image URL
+                  </label>
+                  <input
+                    type="text"
+                    name="img_url"
+                    id="img_url"
+                    value={formData.img_url || ""}
+                    onChange={handleInputChange}
+                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                    placeholder="Image URL"
+                  />
+                </div>
               </div>
-
               <div className="flex items-center space-x-4">
                 <button
                   type="submit"
@@ -304,7 +364,6 @@ const UpdateProducts: React.FC<UpdateProductsProps> = ({ products }) => {
                   Delete
                 </button>
               </div>
-
               {error && (
                 <div className="mt-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800">
                   {error}

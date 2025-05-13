@@ -1,32 +1,43 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 interface LoginFormData {
   email: string;
   password: string;
-  rememberMe?: boolean;
+  rememberMe: boolean;
 }
 
 interface ApiResponse {
   message: string;
   user: {
-    id: string;
+    id: number;
     email: string;
   };
   access_token: string;
 }
+
+interface ErrorResponse {
+  error?: string;
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
-    rememberMe: false,
+    rememberMe: localStorage.getItem("rememberMe") === "true",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Persist rememberMe in localStorage
+  useEffect(() => {
+    localStorage.setItem("rememberMe", formData.rememberMe.toString());
+  }, [formData.rememberMe]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -38,7 +49,18 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Login form submitted:", formData); // Debug
+    console.log("Login form submitted:", formData);
+
+    // Client-side validation
+    if (!formData.email || !formData.password) {
+      toast.error("Email and password are required");
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const formDataToSend = new FormData();
@@ -49,8 +71,8 @@ const Login: React.FC = () => {
     }
 
     try {
-      const apiUrl = "http://127.0.0.1:5000/login";
-      console.log("Sending login request to:", apiUrl); // Debug
+      const apiUrl = `${API_BASE_URL}/login`;
+      console.log("Sending login request to:", apiUrl);
       const response = await axios.post<ApiResponse>(apiUrl, formDataToSend, {
         headers: {
           "X-Requested-With": "XMLHttpRequest",
@@ -58,20 +80,25 @@ const Login: React.FC = () => {
       });
 
       toast.success(response.data.message);
+      // TODO: Consider using HttpOnly cookies for better security
+      // Backend would need to set cookie: response.set_cookie("access_token", token, httponly=true)
       localStorage.setItem("token", response.data.access_token);
       localStorage.setItem("isLoggedIn", "true");
       setTimeout(() => navigate("/"), 2000);
     } catch (error) {
       console.error("Login error:", error);
+      let errorMessage = "Login failed. Please try again.";
       if (axios.isAxiosError(error)) {
-        console.log("Error response:", error.response?.data); // Debug
-        console.log("Error status:", error.response?.status); // Debug
+        const axiosError = error as AxiosError<ErrorResponse>;
+        console.log("Error response:", axiosError.response?.data);
+        console.log("Error status:", axiosError.response?.status);
+        const errorKey = axiosError.response?.data?.error;
+        const errorMessages: Record<string, string> = {
+          "Invalid email or password": "The email or password you entered is incorrect.",
+          "Email and password are required": "Please fill in both email and password.",
+        };
+        errorMessage = errorKey && errorMessages[errorKey] ? errorMessages[errorKey] : errorMessage;
       }
-      const errorMessage = axios.isAxiosError(error)
-        ? error.response?.data?.error ||
-          error.response?.data?.message ||
-          "Login failed. Please try again."
-        : "Login failed. Please try again.";
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -113,9 +140,10 @@ const Login: React.FC = () => {
                     type="email"
                     name="email"
                     id="email"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                     placeholder="name@company.com"
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
                 <div>
@@ -132,8 +160,9 @@ const Login: React.FC = () => {
                     name="password"
                     id="password"
                     placeholder="••••••••"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -145,7 +174,8 @@ const Login: React.FC = () => {
                         type="checkbox"
                         checked={formData.rememberMe}
                         onChange={handleChange}
-                        className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-primary-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-primary-600 dark:ring-offset-gray-800"
+                        className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800"
+                        disabled={isSubmitting}
                       />
                     </div>
                     <div className="ml-3 text-sm">
@@ -157,27 +187,52 @@ const Login: React.FC = () => {
                       </label>
                     </div>
                   </div>
-                  <a
-                    href="#"
-                    className="text-sm font-medium text-primary-600 hover:underline dark:text-primary-500"
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-500"
                   >
                     Forgot password?
-                  </a>
+                  </Link>
                 </div>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  aria-label={isSubmitting ? "Logging in" : "Sign in"}
+                  className={`w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center ${
                     isSubmitting ? "opacity-70 cursor-not-allowed" : ""
                   }`}
                 >
-                  {isSubmitting ? "Logging in..." : "Sign in"}
+                  {isSubmitting ? (
+                    <>
+                      <svg
+                        className="animate-spin h-5 w-5 mr-2 text-white"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8h8a8 8 0 01-8 8v-8H4z"
+                        />
+                      </svg>
+                      Logging in...
+                    </>
+                  ) : (
+                    "Sign in"
+                  )}
                 </button>
                 <p className="text-sm font-light text-gray-500 dark:text-gray-400">
                   Don’t have an account yet?{" "}
                   <Link
                     to="/register"
-                    className="font-medium text-primary-600 hover:underline dark:text-primary-500"
+                    className="font-medium text-blue-600 hover:underline dark:text-blue-500"
                   >
                     Sign up
                   </Link>

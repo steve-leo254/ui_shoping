@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import axios, { AxiosError } from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 interface Category {
-  id: string;
+  id: number;
   code: string;
   name: string;
   description: string;
@@ -25,22 +26,31 @@ interface ProductFormData {
 interface ApiResponse {
   message: string;
   product: {
-    id: string;
+    id: number;
     name: string;
     brand: string;
     cost: number;
     price: number;
     stock_quantity: number;
     barcode: string;
-    category_id: string;
+    category_id: number;
     description: string;
-    img_url: string;
+    image_url: string;
   };
 }
 
+interface ErrorResponse {
+  error?: string;
+  message?: string;
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+
 const AddProducts: React.FC = () => {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [formData, setFormData] = useState<ProductFormData>({
     name: "",
     brand: "",
@@ -55,18 +65,21 @@ const AddProducts: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch categories
+  // Fetch categories on mount
   useEffect(() => {
     const fetchCategories = async () => {
+      setIsLoadingCategories(true);
       try {
         const token = localStorage.getItem("token");
         if (!token) {
-          toast.error("Please log in to continue");
+          toast.error("Please log in to continue. Redirecting...");
+          setTimeout(() => navigate("/login"), 2000);
           return;
         }
         const response = await axios.get<Category[]>(
-          "http://127.0.0.1:5000/categories",
+          `${API_BASE_URL}/categories`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -75,13 +88,37 @@ const AddProducts: React.FC = () => {
           }
         );
         setCategories(response.data);
+        if (response.data.length > 0) {
+          setFormData((prev) => ({
+            ...prev,
+            category_id: response.data[0].id.toString(),
+          }));
+        }
       } catch (error) {
         console.error("Error fetching categories:", error);
-        toast.error("Failed to load categories");
+        if (axios.isAxiosError(error)) {
+          const axiosError = error as AxiosError<ErrorResponse>;
+          if (axiosError.response?.status === 401) {
+            toast.error("Session expired. Please log in again.");
+            localStorage.removeItem("token");
+            localStorage.removeItem("isLoggedIn");
+            setTimeout(() => navigate("/login"), 2000);
+            return;
+          }
+          toast.error(
+            axiosError.response?.data?.error ||
+              axiosError.response?.data?.message ||
+              "Failed to load categories. Please try again."
+          );
+        } else {
+          toast.error("Failed to load categories. Please try again.");
+        }
+      } finally {
+        setIsLoadingCategories(false);
       }
     };
     fetchCategories();
-  }, []);
+  }, [navigate]);
 
   // Clean up image preview
   useEffect(() => {
@@ -92,9 +129,9 @@ const AddProducts: React.FC = () => {
 
   // Handle body scroll lock
   useEffect(() => {
-    document.body.style.overflow = isModalOpen ? "hidden" : "";
+    document.body.style.overflow = isModalOpen ? "hidden" : "auto";
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = "auto";
     };
   }, [isModalOpen]);
 
@@ -106,7 +143,7 @@ const AddProducts: React.FC = () => {
       price: "",
       stock_quantity: "",
       barcode: "",
-      category_id: "",
+      category_id: categories.length > 0 ? categories[0].id.toString() : "",
       description: "",
       image: null,
     });
@@ -126,17 +163,20 @@ const AddProducts: React.FC = () => {
       toast.error("Brand is required");
       return false;
     }
-    if (!formData.cost || Number(formData.cost) <= 0) {
+    const cost = parseFloat(formData.cost);
+    if (!formData.cost || isNaN(cost) || cost <= 0) {
       setError("Cost must be a positive number");
       toast.error("Cost must be a positive number");
       return false;
     }
-    if (!formData.price || Number(formData.price) <= 0) {
+    const price = parseFloat(formData.price);
+    if (!formData.price || isNaN(price) || price <= 0) {
       setError("Price must be a positive number");
       toast.error("Price must be a positive number");
       return false;
     }
-    if (!formData.stock_quantity || Number(formData.stock_quantity) < 0) {
+    const stock = parseInt(formData.stock_quantity, 10);
+    if (!formData.stock_quantity || isNaN(stock) || stock < 0) {
       setError("Stock quantity cannot be negative");
       toast.error("Stock quantity cannot be negative");
       return false;
@@ -146,9 +186,12 @@ const AddProducts: React.FC = () => {
       toast.error("Barcode is required");
       return false;
     }
-    if (!formData.category_id) {
-      setError("Category is required");
-      toast.error("Category is required");
+    if (
+      !formData.category_id ||
+      !categories.some((cat) => cat.id === parseInt(formData.category_id))
+    ) {
+      setError("Please select a valid category");
+      toast.error("Please select a valid category");
       return false;
     }
     if (!formData.image) {
@@ -159,8 +202,10 @@ const AddProducts: React.FC = () => {
     return true;
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  const handleTextChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -197,17 +242,27 @@ const AddProducts: React.FC = () => {
     e.preventDefault();
     setError("");
     setSuccess("");
+    setIsSubmitting(true);
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      setIsSubmitting(false);
+      return;
+    }
 
     const formDataToSend = new FormData();
     formDataToSend.append("name", formData.name);
     formDataToSend.append("brand", formData.brand);
-    formDataToSend.append("cost", formData.cost);
-    formDataToSend.append("price", formData.price);
-    formDataToSend.append("stock_quantity", formData.stock_quantity);
+    formDataToSend.append("cost", parseFloat(formData.cost).toString());
+    formDataToSend.append("price", parseFloat(formData.price).toString());
+    formDataToSend.append(
+      "stock_quantity",
+      parseInt(formData.stock_quantity, 10).toString()
+    );
     formDataToSend.append("barcode", formData.barcode);
-    formDataToSend.append("category_id", formData.category_id);
+    formDataToSend.append(
+      "category_id",
+      parseInt(formData.category_id).toString()
+    );
     formDataToSend.append("description", formData.description);
     if (formData.image) {
       formDataToSend.append("image", formData.image);
@@ -217,12 +272,14 @@ const AddProducts: React.FC = () => {
       const token = localStorage.getItem("token");
       if (!token) {
         setError("Please log in to continue");
-        toast.error("Please log in to continue");
+        toast.error("Please log in to continue. Redirecting...");
+        setTimeout(() => navigate("/login"), 2000);
+        setIsSubmitting(false);
         return;
       }
 
       const response = await axios.post<ApiResponse>(
-        "http://127.0.0.1:5000/products",
+        `${API_BASE_URL}/products`,
         formDataToSend,
         {
           headers: {
@@ -232,69 +289,65 @@ const AddProducts: React.FC = () => {
         }
       );
 
-      setSuccess(
-        `Product "${response.data.product.name}" added successfully with image URL: ${response.data.product.img_url || "N/A"}`
-      );
+      setSuccess(`Product "${response.data.product.name}" added successfully`);
       toast.success(response.data.message);
       resetForm();
       setTimeout(() => setIsModalOpen(false), 2000);
     } catch (error) {
       console.error("Error adding product:", error);
-      const errorMessage = axios.isAxiosError(error)
-        ? error.response?.data?.error ||
-          error.response?.data?.message ||
-          "Failed to add product"
-        : "Failed to add product";
+      let errorMessage = "Failed to add product";
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError<ErrorResponse>;
+        if (axiosError.response?.status === 401) {
+          toast.error("Session expired. Please log in again.");
+          localStorage.removeItem("token");
+          localStorage.removeItem("isLoggedIn");
+          setTimeout(() => navigate("/login"), 2000);
+          return;
+        }
+        errorMessage =
+          axiosError.response?.data?.error ||
+          axiosError.response?.data?.message ||
+          `Failed to add product: ${axiosError.message}`;
+      }
       setError(errorMessage);
       toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      setIsModalOpen(false);
+      resetForm();
     }
   };
 
   return (
     <>
       <ToastContainer position="top-right" autoClose={3000} />
-      <style>
-        {`
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 12px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #4b5563;
-            border-radius: 10px;
-            border: 2px solid #f1f1f1;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #374151;
-          }
-          .custom-scrollbar {
-            scrollbar-width: auto;
-            scrollbar-color: #4b5563 #f1f1f1;
-          }
-        `}
-      </style>
+      <div className="space-x-4">
+        <button
+          type="button"
+          onClick={() => setIsModalOpen(true)}
+          className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50"
+          disabled={isSubmitting}
+          aria-label="Open add product modal"
+        >
+          Add New Product
+        </button>
+      </div>
 
-      <button
-        type="button"
-        onClick={() => setIsModalOpen(true)}
-        className="text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
-      >
-        Add New Product
-      </button>
-
-      <div
-        id="createProductModal"
-        tabIndex={-1}
-        aria-hidden={!isModalOpen}
-        className={`fixed inset-0 z-50 flex justify-center items-center w-full h-full bg-black bg-opacity-50 ${
-          isModalOpen ? "block" : "hidden"
-        }`}
-      >
-        <div className="relative p-4 w-full max-w-2xl h-full md:h-auto">
-          <div className="relative bg-white rounded-lg shadow dark:bg-gray-800 max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar">
+      {isModalOpen && (
+        <div
+          id="createProductModal"
+          tabIndex={-1}
+          aria-hidden={!isModalOpen}
+          className="fixed inset-0 z-50 flex justify-center items-center w-full h-full bg-black bg-opacity-50"
+          onClick={handleBackdropClick}
+        >
+          <div className="relative p-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-lg shadow dark:bg-gray-800">
             <div className="flex justify-between items-center p-4 border-b dark:border-gray-600 sticky top-0 bg-white dark:bg-gray-800 z-10">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Add Product
@@ -305,7 +358,9 @@ const AddProducts: React.FC = () => {
                   setIsModalOpen(false);
                   resetForm();
                 }}
-                className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white"
+                className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white disabled:opacity-50"
+                disabled={isSubmitting}
+                aria-label="Close modal"
               >
                 <svg
                   aria-hidden="true"
@@ -345,13 +400,14 @@ const AddProducts: React.FC = () => {
                     </label>
                     <input
                       value={formData.name}
-                      onChange={handleChange}
+                      onChange={handleTextChange}
                       type="text"
                       name="name"
                       id="name"
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                       placeholder="Type product name"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -363,13 +419,14 @@ const AddProducts: React.FC = () => {
                     </label>
                     <input
                       value={formData.brand}
-                      onChange={handleChange}
+                      onChange={handleTextChange}
                       type="text"
                       name="brand"
                       id="brand"
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                       placeholder="Product brand"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -381,15 +438,16 @@ const AddProducts: React.FC = () => {
                     </label>
                     <input
                       value={formData.price}
-                      onChange={handleChange}
+                      onChange={handleTextChange}
                       type="number"
                       name="price"
                       id="price"
                       min="0"
                       step="0.01"
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                       placeholder="$2999"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -401,15 +459,16 @@ const AddProducts: React.FC = () => {
                     </label>
                     <input
                       value={formData.cost}
-                      onChange={handleChange}
+                      onChange={handleTextChange}
                       type="number"
                       name="cost"
                       id="cost"
                       min="0"
                       step="0.01"
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                       placeholder="$2999"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -421,14 +480,15 @@ const AddProducts: React.FC = () => {
                     </label>
                     <input
                       value={formData.stock_quantity}
-                      onChange={handleChange}
+                      onChange={handleTextChange}
                       type="number"
                       name="stock_quantity"
                       id="stock_quantity"
                       min="0"
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                       placeholder="200"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -440,13 +500,14 @@ const AddProducts: React.FC = () => {
                     </label>
                     <input
                       value={formData.barcode}
-                      onChange={handleChange}
+                      onChange={handleTextChange}
                       type="text"
                       name="barcode"
                       id="barcode"
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                       placeholder="Enter barcode"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -456,21 +517,33 @@ const AddProducts: React.FC = () => {
                     >
                       Category
                     </label>
-                    <select
-                      id="category_id"
-                      name="category_id"
-                      value={formData.category_id}
-                      onChange={handleChange}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                      required
-                    >
-                      <option value="">Select category</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
+                    {isLoadingCategories ? (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Loading categories...
+                      </div>
+                    ) : (
+                      <select
+                        id="category_id"
+                        name="category_id"
+                        value={formData.category_id}
+                        onChange={handleTextChange}
+                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                        required
+                        disabled={isSubmitting || categories.length === 0}
+                        aria-label="Select product category"
+                      >
+                        <option value="">Select category</option>
+                        {categories.length > 0 ? (
+                          categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </option>
+                          ))
+                        ) : (
+                          <option disabled>No categories available</option>
+                        )}
+                      </select>
+                    )}
                   </div>
                   <div className="sm:col-span-2">
                     <label
@@ -485,8 +558,9 @@ const AddProducts: React.FC = () => {
                       id="image"
                       accept="image/*"
                       onChange={handleImageChange}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                       required
+                      disabled={isSubmitting}
                     />
                     {imagePreview && (
                       <div className="mt-4">
@@ -509,16 +583,23 @@ const AddProducts: React.FC = () => {
                       id="description"
                       name="description"
                       value={formData.description}
-                      onChange={handleChange}
+                      onChange={handleTextChange}
                       rows={4}
-                      className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                      className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                       placeholder="Write product description here"
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
                 <button
                   type="submit"
-                  className="text-white inline-flex items-center bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                  className="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50"
+                  disabled={
+                    isSubmitting ||
+                    isLoadingCategories ||
+                    categories.length === 0
+                  }
+                  aria-label="Add new product"
                 >
                   <svg
                     className="mr-1 -ml-1 w-6 h-6"
@@ -532,13 +613,13 @@ const AddProducts: React.FC = () => {
                       clipRule="evenodd"
                     />
                   </svg>
-                  Add new product
+                  {isSubmitting ? "Adding Product..." : "Add new product"}
                 </button>
               </form>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 };
