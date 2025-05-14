@@ -1,8 +1,21 @@
-import React from "react";
-import { Link, NavLink } from "react-router-dom";
-import useLogout from "./UseLogout";
+import React, { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext"; // Import useAuth
+// import { initFlowbite } from "flowbite"; // Import Flowbite initializer
+
 const Bar: React.FC = () => {
-  const { handleLogout } = useLogout();
+  const { isAuthenticated, logout } = useAuth(); // Use AuthContext
+  const navigate = useNavigate();
+
+  // Re-initialize Flowbite after render
+  // useEffect(() => {
+  //   initFlowbite();
+  // }, []);
+
+  const handleLogout = () => {
+    logout(); // Use context logout
+    navigate("/login");
+  };
   return (
     <>
       <nav className="bg-white dark:bg-gray-800 antialiased">
@@ -54,7 +67,7 @@ const Bar: React.FC = () => {
                 </li>
                 <li className="shrink-0">
                   <a
-                    href="#"
+                    href="/store"
                     title=""
                     className="text-sm font-medium text-gray-900 hover:text-primary-700 dark:text-white dark:hover:text-primary-500"
                   >
@@ -643,6 +656,7 @@ const Bar: React.FC = () => {
             <p className="mb-4 text-gray-500 dark:text-gray-300">
               Are you sure you want to Logout?
             </p>
+            {isAuthenticated && (
             <div className="flex justify-center items-center space-x-4">
               <Link
                 to="/"
@@ -660,6 +674,7 @@ const Bar: React.FC = () => {
                 Yes, Logout
               </button>
             </div>
+            )}
           </div>
         </div>
       </div>

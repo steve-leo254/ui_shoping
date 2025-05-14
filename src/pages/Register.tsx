@@ -4,29 +4,26 @@ import type { FormEvent, ChangeEvent } from "react";
 import axios from "axios";
 
 interface FormData {
+  username: string;
   email: string;
   password: string;
-  confirmPassword?: string; // Optional, not sent to backend
+  confirmPassword: string;
 }
 
 interface ApiResponse {
   message: string;
-  user: {
-    id: string;
-    email: string;
-  };
 }
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -36,55 +33,83 @@ const Register: React.FC = () => {
     }));
   };
 
+  const validateForm = (): boolean => {
+    if (!formData.username.trim()) {
+      setError("Username is required.");
+      return false;
+    }
+    if (!formData.email.trim()) {
+      setError("Email is required.");
+      return false;
+    }
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return false;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.");
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    console.log("Form submitted with data:", formData); // Debug log
+
     setIsSubmitting(true);
     setError(null);
-    setSuccess(null);
 
-    // Validate confirm password
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+    if (!validateForm()) {
+      console.log("Validation failed:", error); // Debug log
       setIsSubmitting(false);
       return;
     }
 
-    // Prepare form data for backend
-    const formDataToSend = new FormData();
-    formDataToSend.append("email", formData.email);
-    formDataToSend.append("password", formData.password);
-
     try {
-      const apiUrl = "http://127.0.0.1:5000/register"; // Correct endpoint
-      const response = await axios.post<ApiResponse>(apiUrl, formDataToSend, {
-        headers: {
-          "X-Requested-With": "XMLHttpRequest", // Indicate API request
+      const apiUrl = "http://localhost:8000/auth/register/customer";
+      console.log("Making API call to:", apiUrl); // Debug log
+      const response = await axios.post<ApiResponse>(
+        apiUrl,
+        {
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
         },
-        withCredentials: true, // Support session cookies
-      });
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      setSuccess(response.data.message);
-      setTimeout(() => navigate("/login"), 2000); // Redirect after 2s
+      console.log("Registration successful:", response.data);
+      navigate("/login");
     } catch (error) {
       console.error("Registration error:", error);
-      setError(
-        axios.isAxiosError(error)
-          ? error.response?.data?.error ||
-            error.response?.data?.message ||
-            "Registration failed. Please try again."
-          : "Registration failed. Please try again."
-      );
+      let errorMessage = "Registration failed. Please try again.";
+      if (axios.isAxiosError(error) && error.response) {
+        errorMessage = error.response.data?.detail || errorMessage;
+        console.log("Error response:", error.response.data); // Debug log
+      } else if (axios.isAxiosError(error) && error.request) {
+        errorMessage = "No response from server. Is the backend running?";
+      } else {
+        errorMessage = "An unexpected error occurred.";
+      }
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
+      console.log("Submission completed, isSubmitting:", isSubmitting); // Debug log
     }
   };
 
   return (
-    <section className="bg-gray-50 dark:bg-gray-900">
-      <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
+    <section className="bg-gray-50 dark:bg-gray-900 min-h-screen flex items-center justify-center">
+      <div className="w-full max-w-md px-6 py-8">
+        {/* Flowbite Logo - Sticky Positioning */}
         <a
           href="#"
-          className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white"
+          className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 py-4"
         >
           <img
             className="w-8 h-8 mr-2"
@@ -93,20 +118,43 @@ const Register: React.FC = () => {
           />
           Flowbite
         </a>
-        <div className="w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
+        {/* Form Container with Scroll */}
+        <div className="bg-white rounded-lg shadow dark:border sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700 max-h-[70vh] overflow-y-auto">
           <div className="p-6 space-y-4 md:space-y-6 sm:p-8">
             <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
               Create an account
             </h1>
             {error && (
-              <div className="mb-4 text-red-600 dark:text-red-400">{error}</div>
-            )}
-            {success && (
-              <div className="mb-4 text-green-600 dark:text-green-400">
-                {success}
+              <div
+                className="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                aria-live="polite"
+              >
+                {error}
               </div>
             )}
-            <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-4 md:space-y-6"
+              action="#"
+            >
+              <div>
+                <label
+                  htmlFor="username"
+                  className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                >
+                  Username
+                </label>
+                <input
+                  value={formData.username}
+                  onChange={handleChange}
+                  type="text"
+                  name="username"
+                  id="username"
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  placeholder="johndoe"
+                  required
+                />
+              </div>
               <div>
                 <label
                   htmlFor="email"
@@ -189,7 +237,7 @@ const Register: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                className="w-full text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 disabled:opacity-50"
               >
                 {isSubmitting ? "Creating account..." : "Create an account"}
               </button>

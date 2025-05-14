@@ -1,105 +1,54 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import axios, { AxiosError } from "axios";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+// src/pages/Login.tsx
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { useAuth } from "../context/AuthContext"; // Import useAuth
+import { Link } from "react-router-dom";
 
 interface LoginFormData {
   email: string;
   password: string;
-  rememberMe: boolean;
 }
 
 interface ApiResponse {
-  message: string;
-  user: {
-    id: number;
-    email: string;
-  };
   access_token: string;
 }
 
-interface ErrorResponse {
-  error?: string;
-}
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
-
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { login } = useAuth(); // Get login function from context
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
-    rememberMe: localStorage.getItem("rememberMe") === "true",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Persist rememberMe in localStorage
-  useEffect(() => {
-    localStorage.setItem("rememberMe", formData.rememberMe.toString());
-  }, [formData.rememberMe]);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Login form submitted:", formData);
-
-    // Client-side validation
-    if (!formData.email || !formData.password) {
-      toast.error("Email and password are required");
-      return;
-    }
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-
     setIsSubmitting(true);
 
-    const formDataToSend = new FormData();
-    formDataToSend.append("email", formData.email);
-    formDataToSend.append("password", formData.password);
-    if (formData.rememberMe) {
-      formDataToSend.append("remember-me", "on");
-    }
-
     try {
-      const apiUrl = `${API_BASE_URL}/login`;
-      console.log("Sending login request to:", apiUrl);
-      const response = await axios.post<ApiResponse>(apiUrl, formDataToSend, {
+      const apiUrl = "http://localhost:8000/auth/login";
+      const response = await axios.post<ApiResponse>(apiUrl, formData, {
         headers: {
-          "X-Requested-With": "XMLHttpRequest",
+          "Content-Type": "application/json",
         },
       });
 
-      toast.success(response.data.message);
-      // TODO: Consider using HttpOnly cookies for better security
-      // Backend would need to set cookie: response.set_cookie("access_token", token, httponly=true)
-      localStorage.setItem("token", response.data.access_token);
-      localStorage.setItem("isLoggedIn", "true");
-      setTimeout(() => navigate("/"), 2000);
+      // Update auth state via context
+      login(response.data.access_token);
+      navigate("/"); // No need for window.location.reload()
     } catch (error) {
       console.error("Login error:", error);
-      let errorMessage = "Login failed. Please try again.";
-      if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError<ErrorResponse>;
-        console.log("Error response:", axiosError.response?.data);
-        console.log("Error status:", axiosError.response?.status);
-        const errorKey = axiosError.response?.data?.error;
-        const errorMessages: Record<string, string> = {
-          "Invalid email or password": "The email or password you entered is incorrect.",
-          "Email and password are required": "Please fill in both email and password.",
-        };
-        errorMessage = errorKey && errorMessages[errorKey] ? errorMessages[errorKey] : errorMessage;
-      }
-      toast.error(errorMessage);
+      // toast.error("An error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -107,7 +56,6 @@ const Login: React.FC = () => {
 
   return (
     <>
-      <ToastContainer position="top-right" autoClose={3000} />
       <section className="bg-gray-50 dark:bg-gray-900">
         <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
           <a
@@ -126,7 +74,11 @@ const Login: React.FC = () => {
               <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
                 Sign in to your account
               </h1>
-              <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+              <form
+                onSubmit={handleSubmit}
+                className="space-y-4 md:space-y-6"
+                action="#"
+              >
                 <div>
                   <label
                     htmlFor="email"
@@ -140,10 +92,9 @@ const Login: React.FC = () => {
                     type="email"
                     name="email"
                     id="email"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                     placeholder="name@company.com"
                     required
-                    disabled={isSubmitting}
                   />
                 </div>
                 <div>
@@ -160,9 +111,8 @@ const Login: React.FC = () => {
                     name="password"
                     id="password"
                     placeholder="••••••••"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    className="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                     required
-                    disabled={isSubmitting}
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -170,12 +120,10 @@ const Login: React.FC = () => {
                     <div className="flex items-center h-5">
                       <input
                         id="remember"
-                        name="rememberMe"
+                        aria-describedby="remember"
                         type="checkbox"
-                        checked={formData.rememberMe}
-                        onChange={handleChange}
-                        className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800"
-                        disabled={isSubmitting}
+                        className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-primary-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-primary-600 dark:ring-offset-gray-800"
+                        required
                       />
                     </div>
                     <div className="ml-3 text-sm">
@@ -187,52 +135,33 @@ const Login: React.FC = () => {
                       </label>
                     </div>
                   </div>
-                  <Link
-                    to="/forgot-password"
-                    className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-500"
+                  <a
+                    href="#"
+                    className="text-sm font-medium text-primary-600 hover:underline dark:text-primary-500"
                   >
                     Forgot password?
-                  </Link>
+                  </a>
                 </div>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  aria-label={isSubmitting ? "Logging in" : "Sign in"}
-                  className={`w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center ${
+                  className={`w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                     isSubmitting ? "opacity-70 cursor-not-allowed" : ""
                   }`}
                 >
-                  {isSubmitting ? (
-                    <>
-                      <svg
-                        className="animate-spin h-5 w-5 mr-2 text-white"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8v8h8a8 8 0 01-8 8v-8H4z"
-                        />
-                      </svg>
-                      Logging in...
-                    </>
-                  ) : (
-                    "Sign in"
-                  )}
+                  {isSubmitting ? "Logging in..." : "Login"}
+                </button>
+                <button
+                  type="submit"
+                  className="w-full text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                >
+                  Sign in
                 </button>
                 <p className="text-sm font-light text-gray-500 dark:text-gray-400">
                   Don’t have an account yet?{" "}
                   <Link
                     to="/register"
-                    className="font-medium text-blue-600 hover:underline dark:text-blue-500"
+                    className="font-medium text-primary-600 hover:underline dark:text-primary-500"
                   >
                     Sign up
                   </Link>

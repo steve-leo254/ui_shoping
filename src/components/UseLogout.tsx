@@ -1,54 +1,23 @@
-import { useNavigate } from "react-router-dom";
-import axios, { AxiosError } from "axios";
-import { toast } from "react-toastify";
-import type { MouseEvent } from "react";
-
-interface ErrorResponse {
-  error?: string;
-  message?: string;
-}
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+import { useNavigate } from 'react-router-dom';
+import type { MouseEvent } from 'react';
 
 const useLogout = () => {
   const navigate = useNavigate();
 
-  const handleLogout = async (event?: MouseEvent<HTMLElement>) => {
-    event?.preventDefault();
+  const handleLogout = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    localStorage.removeItem("token");
+    localStorage.removeItem("isLoggedIn");
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.info("No active session found");
-      navigate("/login", { replace: true });
-      return;
-    }
+    // Option 1: Hard reload (resets everything)
+    window.location.href = "/login";
 
-    try {
-      await axios.post<{ message: string }>(
-        `${API_BASE_URL}/logout`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "X-Requested-With": "XMLHttpRequest",
-          },
-        }
-      );
+    // Option 2: Soft reload then redirect (less common in SPAs)
+    // window.location.reload(); 
+    // navigate("/login");
 
-      toast.success("Logged out successfully");
-    } catch (error) {
-      const axiosError = error as AxiosError<ErrorResponse>;
-      const errorMessage =
-        axiosError.response?.data?.error ||
-        axiosError.response?.data?.message ||
-        "Failed to log out";
-      toast.error(errorMessage);
-      console.error("Logout error:", axiosError);
-    } finally {
-      localStorage.removeItem("token");
-      localStorage.removeItem("isLoggedIn");
-      setTimeout(() => navigate("/login", { replace: true }), 2000);
-    }
+    // Note: Using `window.location.href = "/login"` bypasses React Router
+    // and reloads the whole page — which is useful if you're trying to reset state entirely.
   };
 
   return { handleLogout };

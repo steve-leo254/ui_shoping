@@ -1,4 +1,6 @@
+// src/App.tsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext"; // Import AuthProvider
 import Home from "./pages/Home";
 import Layout from "./assets/Layout";
 import Login from "./pages/Login";
@@ -16,26 +18,28 @@ import OrdersOverview from "./pages/OrdersOverview";
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route element={<ProtectedRoute />}>
-          <Route element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/store" element={<ProductCards />} />
-            <Route path="/shopping-cart" element={<ShoppingCart />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/order-summary" element={<OrderSummary />} />
-            <Route path="/order-confirmation" element={<OrderConfirmation />} />
-            <Route path="/order-tracking" element={<OrderTracking />} />
-            <Route path="/order-details" element={<OrderDetails />} />
-            <Route path="/orders-overview" element={<OrdersOverview />} />
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<Layout />}>
+              <Route index element={<Home />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/store" element={<ProductCards />} />
+              <Route path="/shopping-cart" element={<ShoppingCart />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/order-summary" element={<OrderSummary />} />
+              <Route path="/order-confirmation" element={<OrderConfirmation />} />
+              <Route path="/order-tracking" element={<OrderTracking />} />
+              <Route path="/order-details" element={<OrderDetails />} />
+              <Route path="/orders-overview" element={<OrdersOverview />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
