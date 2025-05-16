@@ -23,7 +23,7 @@ const Products: React.FC = () => {
       {/* <!-- Update modal --> */}
       <UpdateProducts products={products} />
       {/* <!-- Read modal --> */}
-      <ViewProducts />
+      {/* <ViewProducts /> */}
       {/* <!-- Delete modal --> */}
     </>
   );

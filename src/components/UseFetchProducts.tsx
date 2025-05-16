@@ -1,8 +1,15 @@
 import axios from 'axios';
-import { useState } from 'react';
-import type { AxiosError, AxiosResponse } from 'axios'; // Added type-only imports
+import { useState, useCallback } from 'react';
+import type { AxiosError } from 'axios';
 
-// Define the Product type based on your SQLAlchemy model and Pydantic schema
+// Define the Category type
+type Category = {
+  id: number;
+  name: string;
+  description: string | null;
+};
+
+// Define the Product type
 type Product = {
   id: number;
   name: string;
@@ -10,49 +17,59 @@ type Product = {
   price: number;
   img_url: string | null;
   stock_quantity: number;
-  created_at?: string; // DateTime comes as string in JSON
+  description: string | null;
+  created_at: string;
   barcode: number;
   user_id: number;
+  category_id: number | null;
+  brand: string | null;
+  category: Category | null;
 };
 
-// Custom hook for fetching products
+// Define the PaginatedProductResponse type
+type PaginatedProductResponse = {
+  items: Product[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+};
+
 export const useFetchProducts = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [products, setProducts] = useState<Product[]>([]);
-  const token = localStorage.getItem("token"); // Get from auth context or state
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalItems, setTotalItems] = useState<number>(0);
+  const [error, setError] = useState<string | null>(null);
 
+  const fetchProducts = useCallback(
+    async (page: number = 1, limit: number = 10, search: string = '') => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await axios.get<PaginatedProductResponse>(
+          'http://localhost:8000/public/products',
+          {
+            params: { page, limit, search },
+          }
+        );
 
-  const fetchProducts = async () => {
-    setIsLoading(true);
-    try {
-      const result = await axios.get<Product[]>( // Removed explicit type annotation
-        "http://localhost:8000/products",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (result.status === 200) {
-        setProducts(result.data);
-        console.log("Products fetched successfully:", result.data);
-      } else {
-        console.error("Unexpected response status:", result.status);
+        setProducts(response.data.items);
+        setTotalPages(response.data.pages);
+        setTotalItems(response.data.total);
+      } catch (error) {
+        const axiosError = error as AxiosError<{ detail?: string }>;
+        const errorMessage =
+          axiosError.response?.data.detail ||
+          'Failed to fetch products. Please try again.';
+        setError(errorMessage);
+        console.error('Error fetching products:', axiosError);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      const axiosError = error as AxiosError<{ detail?: string }>;
-      console.error("Error fetching products:", axiosError);
-      
-      if (axiosError.response) {
-        console.error("Error details:", axiosError.response.data.detail);
-      } else {
-        console.error("Network error while fetching products");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    []
+  );
 
-  return { isLoading, products, fetchProducts };
+  return { isLoading, products, totalPages, totalItems, error, fetchProducts };
 };

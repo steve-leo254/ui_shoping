@@ -1,55 +1,150 @@
-import React, { useState } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { useAuth } from '../context/AuthContext';
 
-interface ProductFormData {
+// Define types based on your Pydantic models
+type Category = {
+  id: number;
+  name: string;
+  description: string | null;
+};
+
+type ProductForm = {
   name: string;
   cost: number;
   price: number;
-  stock_quantity: number;
   img_url: string;
-  barcode: string | number;
-}
+  stock_quantity: number;
+  barcode: number;
+  category_id: number | null;
+  brand: string;
+  description: string;
+};
 
-const AddProducts: React.FC = () => {
-  const [name, setName] = useState<string>("");
-  const [cost, setCost] = useState<number | "">("");
-  const [price, setPrice] = useState<number | "">("");
-  const [stockQuantity, setStockQuantity] = useState<number | "">("");
-  const [imgUrl, setImgUrl] = useState<string>("");
-  const [barcode, setBarcode] = useState<string | number>("");
+const AddProduct: React.FC = () => {
+  const { token, role } = useAuth();
+  const [formData, setFormData] = useState<ProductForm>({
+    name: '',
+    cost: 0,
+    price: 0,
+    img_url: '',
+    stock_quantity: 0,
+    barcode: 0,
+    category_id: null,
+    brand: '',
+    description: '',
+  });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleProductSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get<Category[]>('http://localhost:8000/public/categories');
+        setCategories(response.data);
+      } catch (err) {
+        toast.error('Failed to fetch categories');
+        console.error('Error fetching categories:', err);
+      }
+    };
+    fetchCategories();
+
+    // Initialize Flowbite (required for modal toggle)
+    if (typeof window.initFlowbite === 'function') {
+      window.initFlowbite();
+    }
+  }, []);
+
+  // Handle form input changes
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]:
+        name === 'cost' || name === 'price' || name === 'stock_quantity' || name === 'barcode'
+          ? Number(value) || 0
+          : name === 'category_id'
+          ? value ? Number(value) : null
+          : value,
+    }));
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const formContent: ProductFormData = {
-      name,
-      cost: Number(cost),
-      price: Number(price),
-      stock_quantity: Number(stockQuantity),
-      img_url: imgUrl,
-      barcode,
-    };
+    // Check admin privileges
+    if (!token || role !== 'admin') {
+      toast.error('Admin access required');
+      return;
+    }
+
+    // Client-side validation
+    if (!formData.name) {
+      toast.error('Product name is required');
+      return;
+    }
+    if (formData.cost <= 0) {
+      toast.error('Cost must be greater than 0');
+      return;
+    }
+    if (formData.price <= 0) {
+      toast.error('Price must be greater than 0');
+      return;
+    }
+    if (formData.stock_quantity < 0) {
+      toast.error('Stock quantity cannot be negative');
+      return;
+    }
+    if (formData.barcode <= 0) {
+      toast.error('Barcode must be a positive number');
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
-      const token = localStorage.getItem("token");
-      const apiUrl = "http://127.0.0.1:8000/products";
-      const response = await axios.post(apiUrl, formContent, {
+      await axios.post('http://localhost:8000/products', formData, {
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
-
-      console.log("Done.", response.data);
-      window.location.reload();
-    } catch (error) {
-      console.error(error);
+      toast.success('Product added successfully');
+      // Reset form
+      setFormData({
+        name: '',
+        cost: 0,
+        price: 0,
+        img_url: '',
+        stock_quantity: 0,
+        barcode: 0,
+        category_id: null,
+        brand: '',
+        description: '',
+      });
+      // Close modal
+      const modal = document.getElementById('createProductModal') as HTMLDivElement;
+      if (modal) {
+        modal.classList.add('hidden');
+      }
+    } catch (err: any) {
+      const errorMessage =
+        err.response?.data?.detail || 'Failed to add product. Please try again.';
+      toast.error(errorMessage);
+      console.error('Error adding product:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <>
-      {/* <!-- Create modal --> */}
+  
+      {/* Create modal */}
       <div
         id="createProductModal"
         tabIndex={-1}
@@ -57,9 +152,9 @@ const AddProducts: React.FC = () => {
         className="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full"
       >
         <div className="relative p-4 w-full max-w-2xl max-h-full">
-          {/* <!-- Modal content --> */}
+          {/* Modal content */}
           <div className="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
-            {/* <!-- Modal header --> */}
+            {/* Modal header */}
             <div className="flex justify-between items-center pb-4 mb-4 rounded-t border-b sm:mb-5 dark:border-gray-600">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Add Product
@@ -78,16 +173,16 @@ const AddProducts: React.FC = () => {
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
-                    fill-rule="evenodd"
+                    fillRule="evenodd"
                     d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clip-rule="evenodd"
+                    clipRule="evenodd"
                   />
                 </svg>
                 <span className="sr-only">Close modal</span>
               </button>
             </div>
-            {/* <!-- Modal body --> */}
-            <form onSubmit={handleProductSubmit}>
+            {/* Modal body */}
+            <form onSubmit={handleSubmit}>
               <div className="grid gap-4 mb-4 sm:grid-cols-2">
                 <div>
                   <label
@@ -97,11 +192,11 @@ const AddProducts: React.FC = () => {
                     Name
                   </label>
                   <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
                     type="text"
                     name="name"
                     id="name"
+                    value={formData.name}
+                    onChange={handleChange}
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                     placeholder="Type product name"
                     required
@@ -118,6 +213,8 @@ const AddProducts: React.FC = () => {
                     type="text"
                     name="brand"
                     id="brand"
+                    value={formData.brand}
+                    onChange={handleChange}
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                     placeholder="Product brand"
                   />
@@ -130,11 +227,13 @@ const AddProducts: React.FC = () => {
                     Price
                   </label>
                   <input
-                    value={price}
-                    onChange={(e) => setPrice(e.target.valueAsNumber)}
                     type="number"
                     name="price"
                     id="price"
+                    value={formData.price}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                     placeholder="$2999"
                     required
@@ -148,29 +247,32 @@ const AddProducts: React.FC = () => {
                     Cost
                   </label>
                   <input
-                    value={cost}
-                    onChange={(e) => setCost(e.target.valueAsNumber)}
                     type="number"
                     name="cost"
                     id="cost"
+                    value={formData.cost}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                    placeholder="$2999"
+                    placeholder="$1999"
                     required
                   />
                 </div>
                 <div>
                   <label
-                    htmlFor="stockQuantity"
+                    htmlFor="stock_quantity"
                     className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                   >
                     Stock
                   </label>
                   <input
-                    value={stockQuantity}
-                    onChange={(e) => setStockQuantity(e.target.valueAsNumber)}
                     type="number"
-                    name="stockQuantity"
-                    id="stockQuantity"
+                    name="stock_quantity"
+                    id="stock_quantity"
+                    value={formData.stock_quantity}
+                    onChange={handleChange}
+                    min="0"
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                     placeholder="200"
                     required
@@ -184,11 +286,12 @@ const AddProducts: React.FC = () => {
                     Barcode
                   </label>
                   <input
-                    value={barcode}
-                    onChange={(e) => setBarcode(e.target.valueAsNumber)}
                     type="number"
                     name="barcode"
                     id="barcode"
+                    value={formData.barcode}
+                    onChange={handleChange}
+                    min="0"
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                     placeholder="Enter barcode"
                     required
@@ -196,20 +299,24 @@ const AddProducts: React.FC = () => {
                 </div>
                 <div>
                   <label
-                    htmlFor="category"
+                    htmlFor="category_id"
                     className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                   >
                     Category
                   </label>
                   <select
-                    id="category"
+                    name="category_id"
+                    id="category_id"
+                    value={formData.category_id ?? ''}
+                    onChange={handleChange}
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                   >
-                    <option selected={false}>Select category</option>
-                    <option value="TV">TV/Monitors</option>
-                    <option value="PC">PC</option>
-                    <option value="GA">Gaming/Console</option>
-                    <option value="PH">Phones</option>
+                    <option value="">Select category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="sm:col-span-2">
@@ -220,16 +327,39 @@ const AddProducts: React.FC = () => {
                     Description
                   </label>
                   <textarea
+                    name="description"
                     id="description"
                     rows={4}
+                    value={formData.description}
+                    onChange={handleChange}
                     className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                     placeholder="Write product description here"
                   ></textarea>
                 </div>
+                <div className="sm:col-span-2">
+                  <label
+                    htmlFor="img_url"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Image URL
+                  </label>
+                  <input
+                    type="text"
+                    name="img_url"
+                    id="img_url"
+                    value={formData.img_url}
+                    onChange={handleChange}
+                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
               </div>
               <button
                 type="submit"
-                className="text-white inline-flex items-center bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                disabled={isLoading}
+                className={`text-white inline-flex items-center bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 ${
+                  isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
                 <svg
                   className="mr-1 -ml-1 w-6 h-6"
@@ -238,12 +368,12 @@ const AddProducts: React.FC = () => {
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
-                    fill-rule="evenodd"
+                    fillRule="evenodd"
                     d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                    clip-rule="evenodd"
+                    clipRule="evenodd"
                   />
                 </svg>
-                Add new product
+                {isLoading ? 'Adding Product...' : 'Add new product'}
               </button>
             </form>
           </div>
@@ -253,4 +383,4 @@ const AddProducts: React.FC = () => {
   );
 };
 
-export default AddProducts;
+export default AddProduct;

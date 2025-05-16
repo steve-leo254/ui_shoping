@@ -1,9 +1,17 @@
 // src/context/AuthContext.tsx
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode';
+interface JwtPayload {
+  sub: string;
+  id: number;
+  role: string;
+  exp: number;
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
   token: string | null;
+  role: string | null;
   login: (token: string) => void;
   logout: () => void;
 }
@@ -11,37 +19,58 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
-  const [isAuthenticated, setIsAuthenticated] = useState(!!token);
+  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const [role, setRole] = useState<string | null>(null);
 
+  // Decode token to get role
   useEffect(() => {
-    // Sync with localStorage changes
+    if (token) {
+      try {
+        const decoded: JwtPayload = jwtDecode(token);
+        setRole(decoded.role);
+        setIsAuthenticated(true);
+      } catch (err) {
+        console.error('Invalid token:', err);
+        setToken(null);
+        setRole(null);
+        setIsAuthenticated(false);
+        localStorage.removeItem('token');
+        localStorage.removeItem('isLoggedIn');
+      }
+    } else {
+      setRole(null);
+      setIsAuthenticated(false);
+    }
+  }, [token]);
+
+  // Sync with localStorage changes
+  useEffect(() => {
     const handleStorageChange = () => {
-      const newToken = localStorage.getItem("token");
+      const newToken = localStorage.getItem('token');
       setToken(newToken);
-      setIsAuthenticated(!!newToken);
     };
 
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const login = (newToken: string) => {
-    localStorage.setItem("token", newToken);
-    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('isLoggedIn', 'true');
     setToken(newToken);
-    setIsAuthenticated(true);
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem('token');
+    localStorage.removeItem('isLoggedIn');
     setToken(null);
+    setRole(null);
     setIsAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, token, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, token, role, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -50,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
