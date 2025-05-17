@@ -37,6 +37,8 @@ const AddProduct: React.FC = () => {
   });
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -51,7 +53,7 @@ const AddProduct: React.FC = () => {
     };
     fetchCategories();
 
-    // Initialize Flowbite (required for modal toggle)
+    // Initialize Flowbite
     if (typeof window.initFlowbite === 'function') {
       window.initFlowbite();
     }
@@ -73,11 +75,35 @@ const AddProduct: React.FC = () => {
     }));
   };
 
+  // Handle image file selection
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file (jpg, png, gif)');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size must be less than 5MB');
+        return;
+      }
+      setImageFile(file);
+      // Generate preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImageFile(null);
+      setImagePreview(null);
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Check admin privileges
     if (!token || role !== 'admin') {
       toast.error('Admin access required');
       return;
@@ -108,7 +134,23 @@ const AddProduct: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await axios.post('http://localhost:8000/products', formData, {
+      let img_url = formData.img_url;
+      if (imageFile) {
+        // Upload image
+        const formDataImage = new FormData();
+        formDataImage.append('file', imageFile);
+        const imageResponse = await axios.post('http://localhost:8000/upload-image', formDataImage, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        img_url = imageResponse.data.img_url;
+      }
+
+      // Create product
+      const productData = { ...formData, img_url };
+      await axios.post('http://localhost:8000/products', productData, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -126,6 +168,8 @@ const AddProduct: React.FC = () => {
         brand: '',
         description: '',
       });
+      setImageFile(null);
+      setImagePreview(null);
       // Close modal
       const modal = document.getElementById('createProductModal') as HTMLDivElement;
       if (modal) {
@@ -321,6 +365,31 @@ const AddProduct: React.FC = () => {
                 </div>
                 <div className="sm:col-span-2">
                   <label
+                    htmlFor="image"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                  >
+                    Product Image
+                  </label>
+                  <input
+                    type="file"
+                    name="image"
+                    id="image"
+                    accept="image/jpeg,image/png,image/gif"
+                    onChange={handleImageChange}
+                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                  />
+                  {imagePreview && (
+                    <div className="mt-4">
+                      <img
+                        src={imagePreview}
+                        alt="Product preview"
+                        className="w-32 h-32 object-cover rounded-lg"
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="sm:col-span-2">
+                  <label
                     htmlFor="description"
                     className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                   >
@@ -334,23 +403,6 @@ const AddProduct: React.FC = () => {
                     onChange={handleChange}
                     className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                     placeholder="Write product description here"
-                  ></textarea>
-                </div>
-                <div className="sm:col-span-2">
-                  <label
-                    htmlFor="img_url"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                  >
-                    Image URL
-                  </label>
-                  <input
-                    type="text"
-                    name="img_url"
-                    id="img_url"
-                    value={formData.img_url}
-                    onChange={handleChange}
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                    placeholder="https://example.com/image.jpg"
                   />
                 </div>
               </div>

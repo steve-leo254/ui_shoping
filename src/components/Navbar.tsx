@@ -3,6 +3,7 @@ import { Link, NavLink } from "react-router-dom";
 import useLogout from "./UseLogout";
 const Navbar: React.FC = () => {
   const { handleLogout } = useLogout();
+  
   return (
     <>
       <header className="antialiased">

@@ -4,9 +4,6 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext"; // Import useAuth
 import { Link } from "react-router-dom";
-// import {toast} from "react-tastify";
-
-
 
 interface LoginFormData {
   email: string;

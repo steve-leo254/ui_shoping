@@ -1,7 +1,7 @@
 import React, {useState} from "react";
 import { useFetchProducts } from "./UseFetchProducts";
 import { useEffect } from "react";
-import type { Product } from "../UseFetchProducts"
+import type { Product } from "./UseFetchProducts";
 
 const ProductsTable: React.FC = () => {
   const { isLoading, products, totalPages, totalItems, error, fetchProducts } =

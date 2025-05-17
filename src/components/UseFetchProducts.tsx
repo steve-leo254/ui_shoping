@@ -10,7 +10,7 @@ type Category = {
 };
 
 // Define the Product type
-type Product = {
+export type Product = {
   id: number;
   name: string;
   cost: number;
