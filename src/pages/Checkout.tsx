@@ -85,11 +85,11 @@ const Checkout: React.FC = () => {
                     <label htmlFor="select-country-input-3" className="block text-sm font-medium text-gray-900 dark:text-white">Country*</label>
                   </div>
                   <select id="select-country-input-3" className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500">
-                    <option selected>United States</option>
-                    <option value="AS">Australia</option>
-                    <option value="FR">France</option>
-                    <option value="ES">Spain</option>
-                    <option value="UK">United Kingdom</option>
+                    <option selected>Kenya</option>
+                    <option value="AS">Tanzania</option>
+                    <option value="FR">Zambia</option>
+                    <option value="ES">Uganda</option>
+                    <option value="UK">Ethopia</option>
                   </select>
                 </div>
                 <div>
@@ -97,11 +97,11 @@ const Checkout: React.FC = () => {
                     <label htmlFor="select-city-input-3" className="block text-sm font-medium text-gray-900 dark:text-white">City*</label>
                   </div>
                   <select id="select-city-input-3" className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500">
-                    <option selected>San Francisco</option>
-                    <option value="NY">New York</option>
-                    <option value="LA">Los Angeles</option>
-                    <option value="CH">Chicago</option>
-                    <option value="HU">Houston</option>
+                    <option selected>Kisumu</option>
+                    <option value="NY">Mombasa</option>
+                    <option value="LA">Kiambu</option>
+                    <option value="CH">Nairobi</option>
+                    <option value="HU">Meru</option>
                   </select>
                 </div>
                 <div>
@@ -172,7 +172,7 @@ const Checkout: React.FC = () => {
                                   </filter>
                                 </defs>
                               </svg>
-                              United States (+1)
+                              Kenya (+254)
                             </span>
                           </button>
                         </li>
@@ -180,7 +180,7 @@ const Checkout: React.FC = () => {
                       </ul>
                     </div>
                     <div className="relative w-full">
-                      <input type="text" id="phone-input" className="z-20 block w-full rounded-e-lg border border-s-0 border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:border-s-gray-700 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" placeholder="123-456-7890" required />
+                      <input type="text" id="phone-input" className="z-20 block w-full rounded-e-lg border border-s-0 border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:border-s-gray-700 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" placeholder="+254-758..." required />
                     </div>
                   </div>
                 </div>
