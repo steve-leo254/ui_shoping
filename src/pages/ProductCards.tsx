@@ -13,7 +13,8 @@ type CartItem = {
 
 const ProductCards: React.FC = () => {
   // Use the custom hook to fetch products
-  const { isLoading, products, totalPages, error, fetchProducts } = useFetchProducts();
+  const { isLoading, products, totalPages, error, fetchProducts } =
+    useFetchProducts();
 
   // State for pagination and search
   const [currentPage, setCurrentPage] = useState(1);
@@ -317,7 +318,7 @@ const ProductCards: React.FC = () => {
                       <img
                         className="mx-auto h-full dark:hidden"
                         src={
-                          product.img_url ||
+                          `http://localhost:8000${product.img_url}` ||
                           "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front.svg"
                         }
                         alt={product.name}
@@ -325,7 +326,7 @@ const ProductCards: React.FC = () => {
                       <img
                         className="mx-auto hidden h-full dark:block"
                         src={
-                          product.img_url ||
+                          `http://localhost:8000${product.img_url}` ||
                           "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front-dark.svg"
                         }
                         alt={product.name}
@@ -372,7 +373,10 @@ const ProductCards: React.FC = () => {
                           data-popper-placement="top"
                         >
                           Quick look
-                          <div className="tooltip-arrow" data-popper-arrow=""></div>
+                          <div
+                            className="tooltip-arrow"
+                            data-popper-arrow=""
+                          ></div>
                         </div>
                         <button
                           type="button"
@@ -403,7 +407,10 @@ const ProductCards: React.FC = () => {
                           data-popper-placement="top"
                         >
                           Add to favorites
-                          <div className="tooltip-arrow" data-popper-arrow=""></div>
+                          <div
+                            className="tooltip-arrow"
+                            data-popper-arrow=""
+                          ></div>
                         </div>
                       </div>
                     </div>
@@ -428,8 +435,12 @@ const ProductCards: React.FC = () => {
                           </svg>
                         ))}
                       </div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">5.0</p>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">(455)</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        5.0
+                      </p>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        (455)
+                      </p>
                     </div>
                     <ul className="mt-2 flex items-center gap-4">
                       <li className="flex items-center gap-2">
@@ -510,19 +521,21 @@ const ProductCards: React.FC = () => {
           {/* Pagination */}
           {!isLoading && !error && totalPages > 1 && (
             <div className="mt-4 flex justify-center">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`mx-1 rounded-lg px-3 py-1 ${
-                    currentPage === page
-                      ? "bg-primary-700 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`mx-1 rounded-lg px-3 py-1 ${
+                      currentPage === page
+                        ? "bg-primary-700 text-white"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
             </div>
           )}
 

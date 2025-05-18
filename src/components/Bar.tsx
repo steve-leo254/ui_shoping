@@ -396,7 +396,7 @@ const Bar: React.FC = () => {
               </li>
               <li>
                 <a
-                  href="#"
+                  href="/store"
                   className="hover:text-primary-700 dark:hover:text-primary-500"
                 >
                   Electronics
@@ -407,7 +407,7 @@ const Bar: React.FC = () => {
                   href="#"
                   className="hover:text-primary-700 dark:hover:text-primary-500"
                 >
-                  Home & Garden
+                  Accessories 
                 </a>
               </li>
             </ul>
