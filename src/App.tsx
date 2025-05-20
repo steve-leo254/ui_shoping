@@ -17,10 +17,13 @@ import OrderTracking from "./pages/OrderTracking";
 import OrdersOverview from "./pages/OrdersOverview";
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from "react-toastify";
-import TestProductCards from "./components/TestProductTable";
+import { ShoppingCartProvider } from "./context/ShoppingCartContext";
+import AddressList from "./components/TestProductTable";
+
 function App() {
   return (
     <AuthProvider>
+      <ShoppingCartProvider>
       <Router>
         <ToastContainer
           position="top-right"
@@ -48,11 +51,12 @@ function App() {
             <Route path="/order-tracking" element={<OrderTracking />} />
             <Route path="/order-details" element={<OrderDetails />} />
             <Route path="/orders-overview" element={<OrdersOverview />} />
-            <Route path="/test-products" element={<TestProductCards />} />
+            <Route path="/test-products" element={<AddressList />} />
           </Route>
           {/* </Route> */}
         </Routes>
       </Router>
+      </ShoppingCartProvider>
     </AuthProvider>
   );
 }

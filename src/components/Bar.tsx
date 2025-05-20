@@ -1,16 +1,12 @@
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Import useAuth
-// import { initFlowbite } from "flowbite"; // Import Flowbite initializer
-
+import CartDropdown from "./CartDropdown";
+import { useShoppingCart } from "../context/ShoppingCartContext"; // Import useShoppingCart
 const Bar: React.FC = () => {
   const { isAuthenticated, logout } = useAuth(); // Use AuthContext
   const navigate = useNavigate();
-
-  // Re-initialize Flowbite after render
-  // useEffect(() => {
-  //   initFlowbite();
-  // }, []);
+  const { cartQuantity } = useShoppingCart();
 
   const handleLogout = () => {
     logout(); // Use context logout
@@ -91,7 +87,7 @@ const Bar: React.FC = () => {
                 id="myCartDropdownButton1"
                 data-dropdown-toggle="myCartDropdown1"
                 type="button"
-                className="inline-flex items-center rounded-lg justify-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm font-medium leading-none text-gray-900 dark:text-white"
+                className="relative inline-flex items-center rounded-lg justify-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm font-medium leading-none text-gray-900 dark:text-white"
               >
                 <span className="sr-only">Cart</span>
                 <svg
@@ -129,72 +125,14 @@ const Bar: React.FC = () => {
                     d="m19 9-7 7-7-7"
                   />
                 </svg>
+                {cartQuantity > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartQuantity}
+                  </span>
+                )}
               </button>
 
-              <div
-                id="myCartDropdown1"
-                className="hidden z-10 mx-auto max-w-sm space-y-4 overflow-hidden rounded-lg bg-white p-4 antialiased shadow-lg dark:bg-gray-800"
-              >
-                <div className="grid grid-cols-2">
-                  <div>
-                    <a
-                      href="#"
-                      className="truncate text-sm font-semibold leading-none text-gray-900 dark:text-white hover:underline"
-                    >
-                      Apple iPhone 15
-                    </a>
-                    <p className="mt-0.5 truncate text-sm font-normal text-gray-500 dark:text-gray-400">
-                      $599
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-6">
-                    <p className="text-sm font-normal leading-none text-gray-500 dark:text-gray-400">
-                      Qty: 1
-                    </p>
-
-                    <button
-                      data-tooltip-target="tooltipRemoveItem1a"
-                      type="button"
-                      className="text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-600"
-                    >
-                      <span className="sr-only"> Remove </span>
-                      <svg
-                        className="h-4 w-4"
-                        aria-hidden="true"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          fill-rule="evenodd"
-                          d="M2 12a10 10 0 1 1 20 0 10 10 0 0 1-20 0Zm7.7-3.7a1 1 0 0 0-1.4 1.4l2.3 2.3-2.3 2.3a1 1 0 1 0 1.4 1.4l2.3-2.3 2.3 2.3a1 1 0 0 0 1.4-1.4L13.4 12l2.3-2.3a1 1 0 0 0-1.4-1.4L12 10.6 9.7 8.3Z"
-                          clip-rule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                    <div
-                      id="tooltipRemoveItem1a"
-                      role="tooltip"
-                      className="tooltip invisible absolute z-10 inline-block rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white opacity-0 shadow-sm transition-opacity duration-300 dark:bg-gray-700"
-                    >
-                      Remove item
-                      <div className="tooltip-arrow" data-popper-arrow></div>
-                    </div>
-                  </div>
-                </div>
-
-
-                <a
-                  href="/shopping-cart"
-                  title=""
-                  className="mb-2 me-2 inline-flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
-                  role="button"
-                >
-                  {" "}
-                  Open Cart{" "}
-                </a>
-              </div>
+              <CartDropdown />
 
               <button
                 id="userDropdownButton1"
@@ -396,7 +334,7 @@ const Bar: React.FC = () => {
               </li>
               <li>
                 <a
-                  href="/store"
+                  href="#"
                   className="hover:text-primary-700 dark:hover:text-primary-500"
                 >
                   Electronics
@@ -407,7 +345,7 @@ const Bar: React.FC = () => {
                   href="#"
                   className="hover:text-primary-700 dark:hover:text-primary-500"
                 >
-                  Accessories 
+                  Home & Garden
                 </a>
               </li>
             </ul>
@@ -462,23 +400,23 @@ const Bar: React.FC = () => {
               Are you sure you want to Logout?
             </p>
             {isAuthenticated && (
-            <div className="flex justify-center items-center space-x-4">
-              <Link
-                to="/"
-                data-modal-toggle="logoutModal"
-                type="button"
-                className="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-primary-300 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600"
-              >
-                No, back to home page
-              </Link>
-              <button
-                onClick={handleLogout}
-                type="submit"
-                className="py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900"
-              >
-                Yes, Logout
-              </button>
-            </div>
+              <div className="flex justify-center items-center space-x-4">
+                <Link
+                  to="/"
+                  data-modal-toggle="logoutModal"
+                  type="button"
+                  className="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-primary-300 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600"
+                >
+                  No, back to home page
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  type="submit"
+                  className="py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900"
+                >
+                  Yes, Logout
+                </button>
+              </div>
             )}
           </div>
         </div>

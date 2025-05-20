@@ -1,20 +1,29 @@
 import React, { useState, useEffect } from "react";
 import type { Product } from "../components/UseFetchProducts";
 import { useFetchProducts } from "../components/UseFetchProducts";
+import { useShoppingCart } from "../context/ShoppingCartContext";
+import { formatCurrency } from "../cart/formatCurrency";
 
-// Define CartItem type
-type CartItem = {
+type StoreItemProps = {
   id: number;
   name: string;
   price: number;
-  quantity: number;
-  img_url?: string | null; // Optional to match Product type
+  imgUrl: string;
 };
 
 const ProductCards: React.FC = () => {
   // Use the custom hook to fetch products
   const { isLoading, products, totalPages, error, fetchProducts } =
     useFetchProducts();
+  // state for the cart
+  const {
+    getItemQuantity,
+    increaseCartQuantity,
+    decreaseCartQuantity,
+    removeFromCart,
+  } = useShoppingCart();
+  // Define the image endpoint
+  const imgEndPoint = "http://127.0.0.1:8000";
 
   // State for pagination and search
   const [currentPage, setCurrentPage] = useState(1);
@@ -30,32 +39,6 @@ const ProductCards: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
-
-  // Add to cart function
-  const addToCart = (product: Product) => {
-    // Get the current cart from local storage, or initialize an empty array if none exists
-    const cart = JSON.parse(localStorage.getItem("cart") || "[]") as CartItem[];
-
-    // Check if the product is already in the cart
-    const existingItem = cart.find((item) => item.id === product.id);
-
-    if (existingItem) {
-      // If it exists, increment the quantity
-      existingItem.quantity += 1;
-    } else {
-      // If it doesn't exist, add a new cart item
-      cart.push({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        quantity: 1,
-        img_url: product.img_url,
-      });
-    }
-
-    // Save the updated cart back to local storage
-    localStorage.setItem("cart", JSON.stringify(cart));
-  };
 
   return (
     <>
@@ -315,20 +298,8 @@ const ProductCards: React.FC = () => {
                 >
                   <div className="h-56 w-full">
                     <a href="#">
-                      <img
-                        className="mx-auto h-full dark:hidden"
-                        src={
-                          `http://localhost:8000${product.img_url}` ||
-                          "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front.svg"
-                        }
-                        alt={product.name}
-                      />
-                      <img
-                        className="mx-auto hidden h-full dark:block"
-                        src={
-                          `http://localhost:8000${product.img_url}` ||
-                          "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front-dark.svg"
-                        }
+                      <img   className="mx-auto h-full dark:block"
+                        src={imgEndPoint + product.img_url}
                         alt={product.name}
                       />
                     </a>
@@ -484,13 +455,13 @@ const ProductCards: React.FC = () => {
                       </li>
                     </ul>
                     <div className="mt-4 flex items-center justify-between gap-4">
-                      <p className="text-2xl font-extrabold leading-tight text-gray-900 dark:text-white">
-                        ${product.price}
+                      <p className="text-lg font-extrabold leading-tight text-gray-900 dark:text-white">
+                        {formatCurrency(product.price)}
                       </p>
                       <button
                         type="button"
-                        className="inline-flex items-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
-                        onClick={() => addToCart(product)}
+                        className="bg-blue-600 inline-flex items-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                        onClick={() => increaseCartQuantity(product.id)}
                       >
                         <svg
                           className="-ms-2 me-2 h-5 w-5"
