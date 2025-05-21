@@ -9,13 +9,11 @@ interface FormData {
   username: string;
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 interface ApiResponse {
-  id: string;
-  username: string;
-  email: string;
-  // Add other fields from your API response
+  message: string;
 }
 
 const Register: React.FC = () => {
@@ -24,12 +22,14 @@ const Register: React.FC = () => {
     username: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    console.log(`Input changed: ${name} = ${value}`); // Debug log
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -41,13 +41,29 @@ const Register: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
 
+    console.log("Form data being sent:", formData); // Debug log
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      const apiUrl = "http://localhost:8000/auth/register";
-      const response = await axios.post<ApiResponse>(apiUrl, formData, {
-        headers: {
-          "Content-Type": "application/json",
+      const apiUrl = "http://localhost:8000/auth/register/customer";
+      const response = await axios.post<ApiResponse>(
+        apiUrl,
+        {
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
         },
-      });
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       console.log("Registration successful:", response.data);
       navigate("/login");
@@ -55,8 +71,7 @@ const Register: React.FC = () => {
       console.error("Registration error:", error);
       setError(
         axios.isAxiosError(error)
-          ? error.response?.data?.message ||
-              "Registration failed. Please try again."
+          ? error.response?.data?.detail || "Registration failed. Please try again."
           : "Registration failed. Please try again."
       );
     } finally {
@@ -84,96 +99,117 @@ const Register: React.FC = () => {
               <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
                 Create an account
               </h1>
-              <form
-                onSubmit={handleSubmit}
-                className="space-y-4 md:space-y-6"
-                action="#"
-              >
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                  >
-                    Your email
-                  </label>
-                  <input
-                    value={formData.email}
-                    onChange={handleChange}
-                    type="email"
-                    name="email"
-                    id="email"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    placeholder="name@company.com"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="password"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                  >
-                    Password
-                  </label>
-                  <input
-                    value={formData.password}
-                    onChange={handleChange}
-                    type="password"
-                    name="password"
-                    id="password"
-                    placeholder="••••••••"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="confirm-password"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                  >
-                    Confirm password
-                  </label>
-                  <input
-                    type="confirm-password"
-                    name="confirm-password"
-                    id="confirm-password"
-                    placeholder="••••••••"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                    // required
-                  />
-                </div>
-                <div className="flex items-start">
-                  <div className="flex items-center h-5">
+              {error && (
+                <div className="text-red-500 text-sm">{error}</div>
+              )}
+              <form onSubmit={handleSubmit} action="#">
+                <div className="max-h-[50vh] overflow-y-auto scrollbar-custom space-y-4 md:space-y-6">
+                  <div>
+                    <label
+                      htmlFor="username"
+                      className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    >
+                      Username
+                    </label>
                     <input
-                      id="terms"
-                      aria-describedby="terms"
-                      type="checkbox"
-                      className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-primary-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-primary-600 dark:ring-offset-gray-800"
+                      value={formData.username}
+                      onChange={handleChange}
+                      type="text"
+                      name="username"
+                      id="username"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      placeholder="Your username"
                       required
                     />
                   </div>
-                  <div className="ml-3 text-sm">
+                  <div>
                     <label
-                      htmlFor="terms"
-                      className="font-light text-gray-500 dark:text-gray-300"
+                      htmlFor="email"
+                      className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                     >
-                      I accept the{" "}
-                      <a
-                        className="font-medium text-primary-600 hover:underline dark:text-primary-500"
-                        href="#"
-                      >
-                        Terms and Conditions
-                      </a>
+                      Your email
                     </label>
+                    <input
+                      value={formData.email}
+                      onChange={handleChange}
+                      type="email"
+                      name="email"
+                      id="email"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      placeholder="name@company.com"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="password"
+                      className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    >
+                      Password
+                    </label>
+                    <input
+                      value={formData.password}
+                      onChange={handleChange}
+                      type="password"
+                      name="password"
+                      id="password"
+                      placeholder="••••••••"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="confirm-password"
+                      className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    >
+                      Confirm password
+                    </label>
+                    <input
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      type="password"
+                      name="confirmPassword"
+                      id="confirm-password"
+                      placeholder="••••••••"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="flex items-start">
+                    <div className="flex items-center h-5">
+                      <input
+                        id="terms"
+                        aria-describedby="terms"
+                        type="checkbox"
+                        name="terms"
+                        className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-primary-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-primary-600 dark:ring-offset-gray-800"
+                        required
+                      />
+                    </div>
+                    <div className="ml-3 text-sm">
+                      <label
+                        htmlFor="terms"
+                        className="font-light text-gray-500 dark:text-gray-300"
+                      >
+                        I accept the{" "}
+                        <a
+                          className="font-medium text-primary-600 hover:underline dark:text-primary-500"
+                          href="#"
+                        >
+                          Terms and Conditions
+                        </a>
+                      </label>
+                    </div>
                   </div>
                 </div>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                  className="w-full mt-4 text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
                 >
                   Create an account
                 </button>
-                <p className="text-sm font-light text-gray-500 dark:text-gray-400">
+                <p className="mt-4 text-sm font-light text-gray-500 dark:text-gray-400">
                   Already have an account?{" "}
                   <Link
                     to="/login"

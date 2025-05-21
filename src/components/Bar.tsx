@@ -326,7 +326,7 @@ const Bar: React.FC = () => {
               </li>
               <li>
                 <a
-                  href="#"
+                  href="/store"
                   className="hover:text-primary-700 dark:hover:text-primary-500"
                 >
                   Games
@@ -334,7 +334,7 @@ const Bar: React.FC = () => {
               </li>
               <li>
                 <a
-                  href="#"
+                  href="/store"
                   className="hover:text-primary-700 dark:hover:text-primary-500"
                 >
                   Electronics
@@ -342,7 +342,7 @@ const Bar: React.FC = () => {
               </li>
               <li>
                 <a
-                  href="#"
+                  href="/"
                   className="hover:text-primary-700 dark:hover:text-primary-500"
                 >
                   Home & Garden

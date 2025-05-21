@@ -3,26 +3,50 @@ import axios, { AxiosError } from "axios";
 
 // Define the error response type for API errors
 interface ErrorResponse {
-  detail: string | { type: string; loc: string[]; msg: string; input: string }[];
+  detail:
+    | string
+    | { type: string; loc: string[]; msg: string; input: string }[];
+}
+
+// Define the form data type
+interface FormData {
+  phone_number: string;
+  street: string;
+  county: string;
+  region: string;
+  postal_code: string;
+  country: string;
 }
 
 const AddAddress: React.FC = () => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     phone_number: "",
     street: "",
-    city: "",
+    county: "",
     region: "",
     postal_code: "",
-    country: "Kenya",
+    country: "kenya",
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState<boolean>(false);
 
-  // Kenyan counties for the city dropdown
+  // Kenyan counties for the dropdown
   const kenyanCounties = [
-    "Nairobi", "Mombasa", "Kisumu", "Nakuru", "Kiambu", "Uasin Gishu", "Machakos",
-    "Kajiado", "Kilifi", "Bungoma", "Kakamega", "Meru", "Nyeri", "Laikipia",
+    "nairobi",
+    "mombasa",
+    "kisumu",
+    "nakuru",
+    "kiambu",
+    "uasin gishu",
+    "machakos",
+    "kajiado",
+    "kilifi",
+    "bungoma",
+    "kakamega",
+    "meru",
+    "nyeri",
+    "laikipia",
   ];
 
   const handleInputChange = (
@@ -32,6 +56,14 @@ const AddAddress: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const validatePhoneNumber = (phone: string): string => {
+    let cleaned = phone.replace(/[^0-9+]/g, "");
+    if (!cleaned.startsWith("+254") && cleaned.length === 10) {
+      cleaned = `+254${cleaned.slice(1)}`;
+    }
+    return cleaned;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -39,20 +71,50 @@ const AddAddress: React.FC = () => {
     setFormLoading(true);
 
     const token = localStorage.getItem("token");
+    console.log("Token:", token);
     if (!token) {
-      setFormError("No authentication token found");
+      setFormError("No authentication token found. Please log in.");
+      setFormLoading(false);
+      console.error("No token found in localStorage");
+      return;
+    }
+
+    // Validate required fields
+    if (!formData.street.trim()) {
+      setFormError("Street is required");
+      setFormLoading(false);
+      return;
+    }
+    if (!formData.county) {
+      setFormError("County is required");
+      setFormLoading(false);
+      return;
+    }
+    if (!formData.postal_code.trim()) {
+      setFormError("Postal code is required");
       setFormLoading(false);
       return;
     }
 
-    // Convert empty region to null to match backend schema
+    const normalizedPhone = validatePhoneNumber(formData.phone_number);
+    if (!/^\+254[0-9]{9}$/.test(normalizedPhone)) {
+      setFormError("Phone number must be in the format +254XXXXXXXXX");
+      setFormLoading(false);
+      return;
+    }
+
     const payload = {
-      ...formData,
-      region: formData.region || null,
+      phone_number: normalizedPhone,
+      street: formData.street.trim(),
+      county: formData.county.toLowerCase(),
+      region: formData.region.trim() || null, // Send null for empty region
+      postal_code: formData.postal_code.trim(),
+      country: formData.country.toLowerCase(),
     };
+    console.log("Sending payload:", payload);
 
     try {
-      await axios.post(
+      const response = await axios.post(
         "http://localhost:8000/addresses/",
         payload,
         {
@@ -62,14 +124,15 @@ const AddAddress: React.FC = () => {
           },
         }
       );
+      console.log("Response:", response.data);
       setFormSuccess("Address added successfully!");
       setFormData({
         phone_number: "",
         street: "",
-        city: "",
+        county: "",
         region: "",
         postal_code: "",
-        country: "Kenya",
+        country: "kenya",
       });
     } catch (err) {
       const axiosError = err as AxiosError<ErrorResponse>;
@@ -79,9 +142,10 @@ const AddAddress: React.FC = () => {
         errorMessage =
           typeof detail === "string"
             ? detail
-            : detail.map((e) => e.msg).join(", ");
+            : detail.map((e) => `${e.loc.join(".")}: ${e.msg}`).join(", ");
       }
       setFormError(errorMessage);
+      console.error("Error:", errorMessage, axiosError.response?.data);
     } finally {
       setFormLoading(false);
     }
@@ -99,9 +163,14 @@ const AddAddress: React.FC = () => {
         <div className="text-green-600 dark:text-green-400">{formSuccess}</div>
       )}
       {formLoading && (
-        <div className="text-gray-600 dark:text-gray-400">Adding address...</div>
+        <div className="text-gray-600 dark:text-gray-400">
+          Adding address...
+        </div>
       )}
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form
+        onSubmit={handleSubmit}
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+      >
         <div>
           <label
             htmlFor="phone_number"
@@ -123,7 +192,7 @@ const AddAddress: React.FC = () => {
                 <rect width="19.6" height="14" y="0.5" fill="#fff" rx="2" />
                 <mask
                   id="a"
-                  style={{ maskType: "luminance" } as React.CSSProperties}
+                  style={{ maskType: "luminance" }}
                   width="20"
                   height="15"
                   x="0"
@@ -185,15 +254,15 @@ const AddAddress: React.FC = () => {
 
         <div>
           <label
-            htmlFor="city"
+            htmlFor="county"
             className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
           >
             County*
           </label>
           <select
-            id="city"
-            name="city"
-            value={formData.city}
+            id="county"
+            name="county"
+            value={formData.county}
             onChange={handleInputChange}
             className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
             required
@@ -203,7 +272,7 @@ const AddAddress: React.FC = () => {
             </option>
             {kenyanCounties.map((county) => (
               <option key={county} value={county}>
-                {county}
+                {county.charAt(0).toUpperCase() + county.slice(1)}
               </option>
             ))}
           </select>
@@ -261,7 +330,7 @@ const AddAddress: React.FC = () => {
             className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
             required
           >
-            <option value="Kenya">Kenya</option>
+            <option value="kenya">Kenya</option>
           </select>
         </div>
 
