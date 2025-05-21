@@ -1,214 +1,214 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { useState } from "react";
-import type { FormEvent, ChangeEvent } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
+// src/components/AddressManager.tsx
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
-interface FormData {
-  username: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
+interface Address {
+  id: number;
+  phone_number: string;
+  street: string;
+  city: string;
+  postal_code: string;
+  country: string;
+  is_default: boolean;
+  user_id: number;
+  created_at: string;
 }
 
-interface ApiResponse {
-  message: string;
-}
-
-const Register: React.FC = () => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState<FormData>({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+const AddressManager: React.FC = () => {
+  const { token, isAuthenticated } = useAuth();
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [newAddress, setNewAddress] = useState({
+    phone_number: '',
+    street: '',
+    city: '',
+    postal_code: '',
+    country: '',
+    is_default: false,
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    console.log(`Input changed: ${name} = ${value}`); // Debug log
-    setFormData((prev) => ({
+  // Fetch addresses on component mount
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      fetchAddresses();
+    }
+  }, [isAuthenticated, token]);
+
+  const fetchAddresses = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('http://localhost:8000/addresses', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAddresses(response.data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch addresses');
+      console.error('Error fetching addresses:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setNewAddress((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
-
-    console.log("Form data being sent:", formData); // Debug log
-
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      setIsSubmitting(false);
+    if (!isAuthenticated || !token) {
+      setError('You must be logged in to add an address');
       return;
     }
 
     try {
-      const apiUrl = "http://localhost:8000/auth/register/customer";
-      const response = await axios.post<ApiResponse>(
-        apiUrl,
-        {
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      console.log("Registration successful:", response.data);
-      navigate("/login");
-    } catch (error) {
-      console.error("Registration error:", error);
-      setError(
-        axios.isAxiosError(error)
-          ? error.response?.data?.detail || "Registration failed. Please try again."
-          : "Registration failed. Please try again."
-      );
+      setLoading(true);
+      await axios.post('http://localhost:8000/addresses', newAddress, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSuccess('Address added successfully');
+      setError(null);
+      setNewAddress({
+        phone_number: '',
+        street: '',
+        city: '',
+        postal_code: '',
+        country: '',
+        is_default: false,
+      });
+      await fetchAddresses(); // Refresh address list
+    } catch (err) {
+      setError('Failed to add address');
+      console.error('Error adding address:', err);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <>
-      <section className="bg-gray-50 dark:bg-gray-900">
-        <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
-          <a
-            href="#"
-            className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white"
-          >
-            <img
-              className="w-8 h-8 mr-2"
-              src="https://flowbite.s3.amazonaws.com/blocks/marketing-ui/logo.svg"
-              alt="logo"
+    <div className="max-w-4xl mx-auto p-6">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800">Manage Addresses</h2>
+
+      {/* Add Address Form */}
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md mb-8">
+        <h3 className="text-lg font-semibold mb-4 text-gray-700">Add New Address</h3>
+        {error && <p className="text-red-500 mb-4">{error}</p>}
+        {success && <p className="text-green-500 mb-4">{success}</p>}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+            <input
+              type="text"
+              name="phone_number"
+              value={newAddress.phone_number}
+              onChange={handleInputChange}
+              className="mt-1 p-2 w-full border rounded-md focus:ring-blue-500 focus:border-blue-500"
+              required
             />
-            Flowbite
-          </a>
-          <div className="w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
-            <div className="p-6 space-y-4 md:space-y-6 sm:p-8">
-              <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
-                Create an account
-              </h1>
-              {error && (
-                <div className="text-red-500 text-sm">{error}</div>
-              )}
-              <form onSubmit={handleSubmit} action="#">
-                <div className="max-h-[50vh] overflow-y-auto scrollbar-custom space-y-4 md:space-y-6">
-                  <div>
-                    <label
-                      htmlFor="username"
-                      className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                    >
-                      Username
-                    </label>
-                    <input
-                      value={formData.username}
-                      onChange={handleChange}
-                      type="text"
-                      name="username"
-                      id="username"
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                      placeholder="Your username"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="email"
-                      className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                    >
-                      Your email
-                    </label>
-                    <input
-                      value={formData.email}
-                      onChange={handleChange}
-                      type="email"
-                      name="email"
-                      id="email"
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                      placeholder="name@company.com"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="password"
-                      className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                    >
-                      Password
-                    </label>
-                    <input
-                      value={formData.password}
-                      onChange={handleChange}
-                      type="password"
-                      name="password"
-                      id="password"
-                      placeholder="••••••••"
-                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="flex items-start">
-                    <div className="flex items-center h-5">
-                      <input
-                        id="terms"
-                        aria-describedby="terms"
-                        type="checkbox"
-                        name="terms"
-                        className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-primary-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-primary-600 dark:ring-offset-gray-800"
-                        required
-                      />
-                    </div>
-                    <div className="ml-3 text-sm">
-                      <label
-                        htmlFor="terms"
-                        className="font-light text-gray-500 dark:text-gray-300"
-                      >
-                        I accept the{" "}
-                        <a
-                          className="font-medium text-primary-600 hover:underline dark:text-primary-500"
-                          href="#"
-                        >
-                          Terms and Conditions
-                        </a>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full mt-4 text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
-                >
-                  Create an account
-                </button>
-                <p className="mt-4 text-sm font-light text-gray-500 dark:text-gray-400">
-                  Already have an account?{" "}
-                  <Link
-                    to="/login"
-                    className="font-medium text-primary-600 hover:underline dark:text-primary-500"
-                  >
-                    Login here
-                  </Link>
-                </p>
-              </form>
-            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Street</label>
+            <input
+              type="text"
+              name="street"
+              value={newAddress.street}
+              onChange={handleInputChange}
+              className="mt-1 p-2 w-full border rounded-md focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">City</label>
+            <input
+              type="text"
+              name="city"
+              value={newAddress.city}
+              onChange={handleInputChange}
+              className="mt-1 p-2 w-full border rounded-md focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Postal Code</label>
+            <input
+              type="text"
+              name="postal_code"
+              value={newAddress.postal_code}
+              onChange={handleInputChange}
+              className="mt-1 p-2 w-full border rounded-md focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Country</label>
+            <input
+              type="text"
+              name="country"
+              value={newAddress.country}
+              onChange={handleInputChange}
+              className="mt-1 p-2 w-full border rounded-md focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+          </div>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              name="is_default"
+              checked={newAddress.is_default}
+              onChange={handleInputChange}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label className="ml-2 text-sm font-medium text-gray-700">Set as Default</label>
           </div>
         </div>
-      </section>
-    </>
+        <button
+          type="submit"
+          disabled={loading}
+          className={`mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          {loading ? 'Adding...' : 'Add Address'}
+        </button>
+      </form>
+
+      {/* Address List */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4 text-gray-700">Your Addresses</h3>
+        {loading && <p className="text-gray-500">Loading addresses...</p>}
+        {addresses.length === 0 && !loading && <p className="text-gray-500">No addresses found.</p>}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {addresses.map((address) => (
+            <div key={address.id} className="bg-white p-4 rounded-lg shadow-md">
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">Phone:</span> {address.phone_number}
+              </p>
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">Street:</span> {address.street}
+              </p>
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">City:</span> {address.city}
+              </p>
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">Postal Code:</span> {address.postal_code}
+              </p>
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">Country:</span> {address.country}
+              </p>
+              {address.is_default && (
+                <p className="text-sm text-green-600 font-medium mt-2">Default Address</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 };
 
-export default Register;
+export default AddressManager;

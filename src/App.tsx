@@ -18,8 +18,7 @@ import OrdersOverview from "./pages/OrdersOverview";
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from "react-toastify";
 import { ShoppingCartProvider } from "./context/ShoppingCartContext";
-import AddressList from "./components/TestProductTable";
-
+import AddressManager from "./components/TestProductTable";
 function App() {
   return (
     <AuthProvider>
@@ -51,7 +50,7 @@ function App() {
             <Route path="/order-tracking" element={<OrderTracking />} />
             <Route path="/order-details" element={<OrderDetails />} />
             <Route path="/orders-overview" element={<OrdersOverview />} />
-            <Route path="/test-products" element={<AddressList />} />
+            <Route path="/test-products" element={<AddressManager />} />
           </Route>
           {/* </Route> */}
         </Routes>

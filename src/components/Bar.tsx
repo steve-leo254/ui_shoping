@@ -1,16 +1,23 @@
 import React, { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Import useAuth
 import CartDropdown from "./CartDropdown";
 import { useShoppingCart } from "../context/ShoppingCartContext"; // Import useShoppingCart
 const Bar: React.FC = () => {
   const { isAuthenticated, logout } = useAuth(); // Use AuthContext
-  const navigate = useNavigate();
   const { cartQuantity } = useShoppingCart();
+
+  // Initialize Flowbite
+  useEffect(() => {
+    // Check if Flowbite is loaded and initialize
+    if (window.initFlowbite) {
+      window.initFlowbite();
+    }
+  }, []); // Empty dependency array to run once on mount
 
   const handleLogout = () => {
     logout(); // Use context logout
-    navigate("/login");
+    window.location.href = "/login";
   };
   return (
     <>
@@ -326,7 +333,7 @@ const Bar: React.FC = () => {
               </li>
               <li>
                 <a
-                  href="/store"
+                  href="#"
                   className="hover:text-primary-700 dark:hover:text-primary-500"
                 >
                   Games
@@ -334,7 +341,7 @@ const Bar: React.FC = () => {
               </li>
               <li>
                 <a
-                  href="/store"
+                  href="#"
                   className="hover:text-primary-700 dark:hover:text-primary-500"
                 >
                   Electronics
@@ -342,7 +349,7 @@ const Bar: React.FC = () => {
               </li>
               <li>
                 <a
-                  href="/"
+                  href="#"
                   className="hover:text-primary-700 dark:hover:text-primary-500"
                 >
                   Home & Garden

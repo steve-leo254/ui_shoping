@@ -1,368 +1,191 @@
-import React, { useState } from "react";
-import axios, { AxiosError } from "axios";
+// src/components/DeliveryDetails.tsx
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-// Define the error response type for API errors
-interface ErrorResponse {
-  detail:
-    | string
-    | { type: string; loc: string[]; msg: string; input: string }[];
-}
-
-// Define the form data type
-interface FormData {
+interface Address {
+  id: number;
   phone_number: string;
   street: string;
-  county: string;
-  region: string;
+  city: string;
   postal_code: string;
   country: string;
+  is_default: boolean;
+  user_id: number;
+  created_at: string;
 }
 
-const AddAddress: React.FC = () => {
-  const [formData, setFormData] = useState<FormData>({
-    phone_number: "",
-    street: "",
-    county: "",
-    region: "",
-    postal_code: "",
-    country: "kenya",
-  });
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formSuccess, setFormSuccess] = useState<string | null>(null);
-  const [formLoading, setFormLoading] = useState<boolean>(false);
+const DeliveryDetails: React.FC = () => {
+  const { token, isAuthenticated } = useAuth();
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Kenyan counties for the dropdown
-  const kenyanCounties = [
-    "nairobi",
-    "mombasa",
-    "kisumu",
-    "nakuru",
-    "kiambu",
-    "uasin gishu",
-    "machakos",
-    "kajiado",
-    "kilifi",
-    "bungoma",
-    "kakamega",
-    "meru",
-    "nyeri",
-    "laikipia",
-  ];
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      fetchAddresses();
+    }
+  }, [isAuthenticated, token]);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const fetchAddresses = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('http://localhost:8000/addresses', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // Sort addresses to put default first, then take top 2
+      const sortedAddresses = response.data.sort((a: Address, b: Address) =>
+        a.is_default === b.is_default ? 0 : a.is_default ? -1 : 1
+      ).slice(0, 2);
+      setAddresses(sortedAddresses);
+    } catch (err) {
+      toast.error('Failed to fetch addresses', {
+        style: { border: '1px solid #ef4444', color: '#111827' },
+        progressStyle: { background: '#ef4444' }, // Matches text-red-600
+      });
+      console.error('Error fetching addresses:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const validatePhoneNumber = (phone: string): string => {
-    let cleaned = phone.replace(/[^0-9+]/g, "");
-    if (!cleaned.startsWith("+254") && cleaned.length === 10) {
-      cleaned = `+254${cleaned.slice(1)}`;
-    }
-    return cleaned;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    setFormSuccess(null);
-    setFormLoading(true);
-
-    const token = localStorage.getItem("token");
-    console.log("Token:", token);
-    if (!token) {
-      setFormError("No authentication token found. Please log in.");
-      setFormLoading(false);
-      console.error("No token found in localStorage");
+  const handleDelete = async (addressId: number) => {
+    if (!isAuthenticated || !token) {
+      toast.error('You must be logged in to delete an address', {
+        style: { border: '1px solid #ef4444', color: '#111827' },
+        progressStyle: { background: '#ef4444' },
+      });
       return;
     }
-
-    // Validate required fields
-    if (!formData.street.trim()) {
-      setFormError("Street is required");
-      setFormLoading(false);
-      return;
-    }
-    if (!formData.county) {
-      setFormError("County is required");
-      setFormLoading(false);
-      return;
-    }
-    if (!formData.postal_code.trim()) {
-      setFormError("Postal code is required");
-      setFormLoading(false);
-      return;
-    }
-
-    const normalizedPhone = validatePhoneNumber(formData.phone_number);
-    if (!/^\+254[0-9]{9}$/.test(normalizedPhone)) {
-      setFormError("Phone number must be in the format +254XXXXXXXXX");
-      setFormLoading(false);
-      return;
-    }
-
-    const payload = {
-      phone_number: normalizedPhone,
-      street: formData.street.trim(),
-      county: formData.county.toLowerCase(),
-      region: formData.region.trim() || null, // Send null for empty region
-      postal_code: formData.postal_code.trim(),
-      country: formData.country.toLowerCase(),
-    };
-    console.log("Sending payload:", payload);
 
     try {
-      const response = await axios.post(
-        "http://localhost:8000/addresses/",
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      console.log("Response:", response.data);
-      setFormSuccess("Address added successfully!");
-      setFormData({
-        phone_number: "",
-        street: "",
-        county: "",
-        region: "",
-        postal_code: "",
-        country: "kenya",
+      setLoading(true);
+      await axios.delete(`http://localhost:8000/addresses/${addressId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-    } catch (err) {
-      const axiosError = err as AxiosError<ErrorResponse>;
-      let errorMessage = "Failed to add address";
-      if (axiosError.response?.data?.detail) {
-        const detail = axiosError.response.data.detail;
-        errorMessage =
-          typeof detail === "string"
-            ? detail
-            : detail.map((e) => `${e.loc.join(".")}: ${e.msg}`).join(", ");
-      }
-      setFormError(errorMessage);
-      console.error("Error:", errorMessage, axiosError.response?.data);
+      toast.success('Address deleted successfully', {
+        style: { border: '1px solid #10b981', color: '#111827' },
+        progressStyle: { background: '#10b981' }, // Matches text-green-600
+      });
+      await fetchAddresses(); // Refresh address list
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to delete address', {
+        style: { border: '1px solid #ef4444', color: '#111827' },
+        progressStyle: { background: '#ef4444' },
+      });
+      console.error('Error deleting address:', err);
     } finally {
-      setFormLoading(false);
+      setLoading(false);
     }
+  };
+
+  // Format address for display
+  const formatAddress = (address: Address) => {
+    return `${address.street}, ${address.city}, ${address.postal_code}, ${address.country} | Phone: ${address.phone_number}`;
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-        Add Delivery Details
-      </h2>
-      {formError && (
-        <div className="text-red-600 dark:text-red-400">{formError}</div>
-      )}
-      {formSuccess && (
-        <div className="text-green-600 dark:text-green-400">{formSuccess}</div>
-      )}
-      {formLoading && (
-        <div className="text-gray-600 dark:text-gray-400">
-          Adding address...
-        </div>
-      )}
-      <form
-        onSubmit={handleSubmit}
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2"
-      >
-        <div>
-          <label
-            htmlFor="phone_number"
-            className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-          >
-            Phone Number*
-          </label>
-          <div className="flex items-center">
-            <button
-              type="button"
-              className="z-10 inline-flex shrink-0 items-center rounded-s-lg border border-gray-300 bg-gray-100 px-4 py-2.5 text-center text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-700"
-            >
-              <svg
-                className="me-2 h-4 w-4"
-                fill="none"
-                viewBox="0 0 20 15"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <rect width="19.6" height="14" y="0.5" fill="#fff" rx="2" />
-                <mask
-                  id="a"
-                  style={{ maskType: "luminance" }}
-                  width="20"
-                  height="15"
-                  x="0"
-                  y="0"
-                  maskUnits="userSpaceOnUse"
-                >
-                  <rect width="19.6" height="14" y="0.5" fill="#fff" rx="2" />
-                </mask>
-                <g mask="url(#a)">
-                  <path fill="#0E3C20" d="M0 0.5h19.6v4.667H0z" />
-                  <path fill="#fff" d="M0 5.167h19.6v4.667H0z" />
-                  <path fill="#D40000" d="M0 9.833h19.6V14.5H0z" />
-                  <path fill="#000" d="M0 6.533h19.6v1.867H0z" />
-                  <path fill="#D40000" d="M9.333 0.5h0.933v14h-0.933z" />
-                  <path
-                    fill="#fff"
-                    d="M8.867 4.7a2.8 2.8 0 0 1 2.8 0v5.6a2.8 2.8 0 0 1-2.8 0z"
-                  />
-                  <path
-                    fill="#D40000"
-                    d="M9.333 7.467c0 0.258 0.21 0.467 0.467 0.467s0.467-0.21 0.467-0.467-0.21-0.467-0.467-0.467-0.467 0.209-0.467 0.467zm0.467-2.334c-0.258 0-0.467 0.21-0.467 0.467s0.209 0.467 0.467 0.467 0.467-0.21 0.467-0.467-0.21-0.467-0.467-0.467zm0 4.667c-0.258 0-0.467 0.209-0.467 0.466s0.209 0.467 0.467 0.467 0.467-0.21 0.467-0.467-0.21-0.467-0.467-0.467z"
-                  />
-                </g>
-              </svg>
-              +254
-            </button>
+    <>
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 ps-4 dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex items-start">
+          <div className="flex h-5 items-center">
             <input
-              type="text"
-              id="phone_number"
-              name="phone_number"
-              value={formData.phone_number}
-              onChange={handleInputChange}
-              className="z-20 block w-full rounded-e-lg border border-s-0 border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:border-s-gray-700 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500"
-              pattern="\+254[0-9]{9}"
-              placeholder="+254712345678"
-              required
+              id="pay-on-delivery"
+              aria-describedby="pay-on-delivery-text"
+              type="radio"
+              name="payment-method"
+              value=""
+              className="h-4 w-4 border-gray-300 bg-white text-primary-600 focus:ring-2 focus:ring-primary-600 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary-600"
+              checked={addresses[0]?.is_default}
             />
+          </div>
+
+          <div className="ms-4 text-sm">
+            <label
+              htmlFor="pay-on-delivery"
+              className="font-medium leading-none text-green-600 dark:text-green-400"
+            >
+              Default Address
+            </label>
+            <p
+              id="pay-on-delivery-text"
+              className="mt-1 text-xs font-normal text-gray-500 dark:text-gray-400"
+            >
+              {loading ? 'Loading...' : addresses[0] ? formatAddress(addresses[0]) : 'No default address set'}
+            </p>
           </div>
         </div>
 
-        <div>
-          <label
-            htmlFor="street"
-            className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-          >
-            Street*
-          </label>
-          <input
-            type="text"
-            id="street"
-            name="street"
-            value={formData.street}
-            onChange={handleInputChange}
-            className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
-            placeholder="Kenyatta Avenue"
-            required
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="county"
-            className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-          >
-            County*
-          </label>
-          <select
-            id="county"
-            name="county"
-            value={formData.county}
-            onChange={handleInputChange}
-            className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
-            required
-          >
-            <option value="" disabled>
-              Select a county
-            </option>
-            {kenyanCounties.map((county) => (
-              <option key={county} value={county}>
-                {county.charAt(0).toUpperCase() + county.slice(1)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label
-            htmlFor="region"
-            className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-          >
-            Region
-          </label>
-          <input
-            type="text"
-            id="region"
-            name="region"
-            value={formData.region}
-            onChange={handleInputChange}
-            className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
-            placeholder="e.g., Central, Rift Valley"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="postal_code"
-            className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-          >
-            Postal Code*
-          </label>
-          <input
-            type="text"
-            id="postal_code"
-            name="postal_code"
-            value={formData.postal_code}
-            onChange={handleInputChange}
-            className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
-            placeholder="00100"
-            required
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="country"
-            className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-          >
-            Country*
-          </label>
-          <select
-            id="country"
-            name="country"
-            value={formData.country}
-            onChange={handleInputChange}
-            className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
-            required
-          >
-            <option value="kenya">Kenya</option>
-          </select>
-        </div>
-
-        <div className="sm:col-span-2">
+        <div className="mt-4 flex items-center gap-2">
           <button
-            type="submit"
-            disabled={formLoading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700 disabled:opacity-50"
+            type="button"
+            onClick={() => addresses[0] && handleDelete(addresses[0].id)}
+            className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading || !addresses[0]}
           >
-            <svg
-              className="h-5 w-5"
-              aria-hidden="true"
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M5 12h14m-7 7V5"
-              />
-            </svg>
-            Add new address
+            Delete
+          </button>
+          <div className="h-3 w-px shrink-0 bg-gray-200 dark:bg-gray-700"></div>
+          <button
+            type="button"
+            className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+          >
+            Edit
           </button>
         </div>
-      </form>
-    </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 ps-4 dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex items-start">
+          <div className="flex h-5 items-center">
+            <input
+              id="credit-card"
+              aria-describedby="credit-card-text"
+              type="radio"
+              name="payment-method"
+              value=""
+              className="h-4 w-4 border-gray-300 bg-white text-primary-600 focus:ring-2 focus:ring-primary-600 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary-600"
+              checked={!addresses[0]?.is_default && addresses[1]}
+            />
+          </div>
+
+          <div className="ms-4 text-sm">
+            <label
+              htmlFor="credit-card"
+              className="font-medium leading-none text-green-600 dark:text-green-400"
+            >
+              Address 2
+            </label>
+            <p
+              id="credit-card-text"
+              className="mt-1 text-xs font-normal text-gray-500 dark:text-gray-400"
+            >
+              {loading ? 'Loading...' : addresses[1] ? formatAddress(addresses[1]) : 'No second address available'}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => addresses[1] && handleDelete(addresses[1].id)}
+            className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading || !addresses[1]}
+          >
+            Delete
+          </button>
+          <div className="h-3 w-px shrink-0 bg-gray-200 dark:bg-gray-700"></div>
+          <button
+            type="button"
+            className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+          >
+            Edit
+          </button>
+        </div>
+      </div>
+    </>
   );
 };
 
-export default AddAddress;
+export default DeliveryDetails;

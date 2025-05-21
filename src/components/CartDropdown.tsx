@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useShoppingCart } from '../context/ShoppingCartContext';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { useShoppingCart } from "../context/ShoppingCartContext";
 type Product = {
   id: number;
   name: string;
@@ -21,7 +21,9 @@ const CartDropdown: React.FC = () => {
       const promises = cartItems.map(async (item) => {
         try {
           // Replace with your actual API endpoint, e.g., http://localhost:8000/public/products/${item.id}
-          const res = await axios.get<Product>(`http://localhost:8000/public/products/${item.id}`);
+          const res = await axios.get<Product>(
+            `http://localhost:8000/public/products/${item.id}`
+          );
           return { product: res.data, quantity: item.quantity };
         } catch (error) {
           console.error(`Error fetching product ${item.id}:`, error);
@@ -29,7 +31,9 @@ const CartDropdown: React.FC = () => {
         }
       });
       const results = await Promise.all(promises);
-      const validProducts = results.filter((result) => result !== null) as CartProduct[];
+      const validProducts = results.filter(
+        (result) => result !== null
+      ) as CartProduct[];
       setCartProducts(validProducts);
     };
 
@@ -86,11 +90,13 @@ const CartDropdown: React.FC = () => {
           </div>
         ))
       ) : (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Your cart is empty.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Your cart is empty.
+        </p>
       )}
       <a
         href="/shopping-cart"
-        className="mb-2 me-2 inline-flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+        className="mb-2 me-2 inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-blue-100 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800"
         role="button"
       >
         Open Cart

@@ -16,12 +16,7 @@ const ProductCards: React.FC = () => {
   const { isLoading, products, totalPages, error, fetchProducts } =
     useFetchProducts();
   // state for the cart
-  const {
-    getItemQuantity,
-    increaseCartQuantity,
-    decreaseCartQuantity,
-    removeFromCart,
-  } = useShoppingCart();
+  const { addToCart } = useShoppingCart();
   // Define the image endpoint
   const imgEndPoint = "http://127.0.0.1:8000";
 
@@ -298,16 +293,17 @@ const ProductCards: React.FC = () => {
                 >
                   <div className="h-56 w-full">
                     <a href="#">
-                      <img   className="mx-auto h-full dark:block"
+                      <img
+                        className="mx-auto h-full dark:block"
                         src={imgEndPoint + product.img_url}
                         alt={product.name}
                       />
                     </a>
                   </div>
                   <div className="pt-6">
-                    <div className="  mb-4 flex items-center justify-between gap-4">
-                      <span className=" me-2 rounded bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-800 dark:bg-primary-900 dark:text-primary-300">
-                        Up to 25% off
+                    <div className="mb-4 flex items-center justify-between gap-4">
+                      <span className="me-2 rounded bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-800 dark:bg-primary-900 dark:text-primary-300">
+                        Up to 35% off
                       </span>
                       <div className="flex items-center justify-end gap-1">
                         <button
@@ -461,7 +457,14 @@ const ProductCards: React.FC = () => {
                       <button
                         type="button"
                         className="bg-blue-600 inline-flex items-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
-                        onClick={() => increaseCartQuantity(product.id)}
+                        onClick={() =>
+                          addToCart({
+                            id: product.id,
+                            name: product.name,
+                            price: product.price,
+                            img_url: imgEndPoint + product.img_url,
+                          })
+                        }
                       >
                         <svg
                           className="-ms-2 me-2 h-5 w-5"

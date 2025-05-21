@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import type { MouseEvent } from 'react';
 
 const useLogout = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const handleLogout = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
