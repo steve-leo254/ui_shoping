@@ -305,9 +305,9 @@ const ProductCards: React.FC = () => {
                     </a>
                   </div>
                   <div className="pt-6">
-                    <div className="mb-4 flex items-center justify-between gap-4">
-                      <span className="me-2 rounded bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-800 dark:bg-primary-900 dark:text-primary-300">
-                        Up to 35% off
+                    <div className="  mb-4 flex items-center justify-between gap-4">
+                      <span className=" me-2 rounded bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-800 dark:bg-primary-900 dark:text-primary-300">
+                        Up to 25% off
                       </span>
                       <div className="flex items-center justify-end gap-1">
                         <button

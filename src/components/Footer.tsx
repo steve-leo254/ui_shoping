@@ -14,7 +14,7 @@ const Footer: React.FC = () => {
                   alt="FlowBite Logo"
                 />
                 <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">
-                  Flowbite
+                  FlowTech
                 </span>
               </a>
             </div>
@@ -26,15 +26,15 @@ const Footer: React.FC = () => {
                 <ul className="text-gray-600 dark:text-gray-400">
                   <li className="mb-4">
                     <a href="https://flowbite.com" className="hover:underline">
-                      Flowbite
+                      FlowTech
                     </a>
                   </li>
                   <li>
                     <a
-                      href="https://tailwindcss.com/"
+                      href="https://steveleoprof.netlify.app/"
                       className="hover:underline"
                     >
-                      Tailwind CSS
+                      Steve Leo
                     </a>
                   </li>
                 </ul>
@@ -46,7 +46,7 @@ const Footer: React.FC = () => {
                 <ul className="text-gray-600 dark:text-gray-400">
                   <li className="mb-4">
                     <a
-                      href="https://github.com/themesberg/flowbite"
+                      href="https://github.com/steve-leo254"
                       className="hover:underline "
                     >
                       Github
@@ -54,10 +54,10 @@ const Footer: React.FC = () => {
                   </li>
                   <li>
                     <a
-                      href="https://discord.gg/4eeurUVvTy"
+                      href="https://github.com/ericomondi"
                       className="hover:underline"
                     >
-                      Discord
+                      Github_Two
                     </a>
                   </li>
                 </ul>
@@ -84,9 +84,9 @@ const Footer: React.FC = () => {
           <hr className="my-6 border-gray-200 sm:mx-auto dark:border-gray-700 lg:my-8" />
           <div className="sm:flex sm:items-center sm:justify-between">
             <span className="text-sm text-gray-500 sm:text-center dark:text-gray-400">
-              © 2022{" "}
+              © 2025{" "}
               <a href="https://flowbite.com" className="hover:underline">
-                Flowbite™
+                FlowTech Solutions™
               </a>
               . All Rights Reserved.
             </span>

@@ -410,8 +410,8 @@
                     disabled={products.length === 0}
                     className={`flex w-full items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium text-white ${
                       products.length === 0
-                        ? "bg-blue-400 cursor-not-allowed"
-                        : "bg-primary-700 hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                        ? "bg-blue-600 cursor-not-allowed"
+                        : "bg-blue-600 bg-primary-700 hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
                     }`}
                   >
                     Proceed to Payment
