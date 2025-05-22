@@ -10,23 +10,23 @@ const OrderConfirmation: React.FC = () => {
       <div className="space-y-4 sm:space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800 mb-6 md:mb-8">
           <dl className="sm:flex items-center justify-between gap-4">
               <dt className="font-normal mb-1 sm:mb-0 text-gray-500 dark:text-gray-400">Date</dt>
-              <dd className="font-medium text-gray-900 dark:text-white sm:text-end">14 May 2024</dd>
+              <dd className="font-medium text-gray-900 dark:text-white sm:text-end">14 May 2025</dd>
           </dl>
           <dl className="sm:flex items-center justify-between gap-4">
               <dt className="font-normal mb-1 sm:mb-0 text-gray-500 dark:text-gray-400">Payment Method</dt>
-              <dd className="font-medium text-gray-900 dark:text-white sm:text-end">JPMorgan monthly installments</dd>
+              <dd className="font-medium text-gray-900 dark:text-white sm:text-end">Mpesa</dd>
           </dl>
           <dl className="sm:flex items-center justify-between gap-4">
-              <dt className="font-normal mb-1 sm:mb-0 text-gray-500 dark:text-gray-400">Name</dt>
-              <dd className="font-medium text-gray-900 dark:text-white sm:text-end">Flowbite Studios LLC</dd>
+              <dt className="font-normal mb-1 sm:mb-0 text-gray-500 dark:text-gray-400">Email</dt>
+              <dd className="font-medium text-gray-900 dark:text-white sm:text-end">joo</dd>
           </dl>
           <dl className="sm:flex items-center justify-between gap-4">
               <dt className="font-normal mb-1 sm:mb-0 text-gray-500 dark:text-gray-400">Address</dt>
-              <dd className="font-medium text-gray-900 dark:text-white sm:text-end">34 Scott Street, San Francisco, California, USA</dd>
+              <dd className="font-medium text-gray-900 dark:text-white sm:text-end">Kiambu</dd>
           </dl>
           <dl className="sm:flex items-center justify-between gap-4">
               <dt className="font-normal mb-1 sm:mb-0 text-gray-500 dark:text-gray-400">Phone</dt>
-              <dd className="font-medium text-gray-900 dark:text-white sm:text-end">+(123) 456 7890</dd>
+              <dd className="font-medium text-gray-900 dark:text-white sm:text-end">+254758434</dd>
           </dl>
       </div>
       <div className="flex items-center space-x-4">

@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useShoppingCart } from "../context/ShoppingCartContext";
-import DeliveryDetails from "../components/DeliveryDetails"; // Replaces AddAddress
+import DeliveryDetails from "../components/DeliveryDetails";
 import AddDeliveryDetails from "../components/AddDeliveryDetails";
 import { formatCurrency } from "../cart/formatCurrency";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 interface Product {
   id: number;
@@ -16,6 +18,11 @@ interface Product {
 interface CartItem {
   id: number;
   quantity: number;
+}
+
+interface Address {
+  id: number;
+  is_default: boolean;
 }
 
 const Checkout: React.FC = () => {
@@ -52,11 +59,11 @@ const Checkout: React.FC = () => {
         setProducts(fetchedProducts);
         setLoading(false);
       } catch (err) {
-        setError(
-          axios.isAxiosError(err)
-            ? `Failed to fetch products: ${err.response?.status} ${err.response?.statusText}`
-            : "Failed to fetch product details"
-        );
+        const errorMessage = axios.isAxiosError(err)
+          ? `Failed to fetch products: ${err.response?.status} ${err.response?.statusText}`
+          : "Failed to fetch product details";
+        setError(errorMessage);
+        toast.error(errorMessage);
         setLoading(false);
       }
     };
@@ -82,36 +89,67 @@ const Checkout: React.FC = () => {
       }
 
       // Check if an address exists
-      const addressResponse = await axios.get(
+      const addressResponse = await axios.get<Address[]>(
         "http://localhost:8000/addresses/",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
       if (!addressResponse.data || addressResponse.data.length === 0) {
-        setError("Please add a delivery address before proceeding.");
+        const errorMessage = "Please add a delivery address before proceeding.";
+        setError(errorMessage);
+        toast.error(errorMessage);
         return;
       }
 
+      // Get the default address or the first available address
+      const defaultAddress = addressResponse.data.find((addr) => addr.is_default) || addressResponse.data[0];
+
+      // Get selected payment method
+      const paymentMethodInput = document.querySelector(
+        'input[name="payment-method"]:checked'
+      ) as HTMLInputElement;
+      const paymentMethod = paymentMethodInput?.id || "credit_card";
+
+      // Construct items array with product_id, quantity, and unit_price
+      const items = products.map((product) => ({
+        product_id: product.id,
+        quantity: cartItems.find((item) => item.id === product.id)?.quantity || 0,
+        unit_price: product.price,
+      }));
+
+      // Create order payload
+      const orderPayload = {
+        delivery_address_id: defaultAddress.id,
+        billing_address_id: defaultAddress.id,
+        payment_method: paymentMethod,
+        subtotal: subtotal,
+        shipping_fee: shippingFee,
+        total: total,
+        items: items,
+      };
+
       // Create order
-      const cartPayload = { cart: cartItems };
       const orderResponse = await axios.post(
-        "http://localhost:8000/create_order",
-        cartPayload,
+        "http://localhost:8000/orders/",
+        orderPayload,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
 
       if (orderResponse.status === 201) {
+        toast.success("Order created successfully");
         navigate("/order-summary");
       }
     } catch (err) {
-      setError(
-        axios.isAxiosError(err)
-          ? `Order creation failed: ${err.response?.status} ${err.response?.statusText}`
-          : "Failed to create order. Please try again."
-      );
+      const errorMessage = axios.isAxiosError(err)
+        ? err.response?.status === 400
+          ? err.response?.data?.detail || "Invalid order data. Please check your inputs."
+          : `Order creation failed: ${err.response?.status} ${err.response?.statusText}`
+        : "Failed to create order. Please try again.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -255,18 +293,18 @@ const Checkout: React.FC = () => {
                   <div className="flex items-start">
                     <div className="flex h-5 items-center">
                       <input
-                        id="credit-card"
+                        id="credit_card"
                         aria-describedby="credit-card-text"
                         type="radio"
                         name="payment-method"
-                        value=""
+                        value="credit_card"
                         className="h-4 w-4 border-gray-300 bg-white text-primary-600 focus:ring-2 focus:ring-primary-600 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary-600"
-                        checked
+                        defaultChecked
                       />
                     </div>
                     <div className="ms-4 text-sm">
                       <label
-                        htmlFor="credit-card"
+                        htmlFor="credit_card"
                         className="font-medium leading-none text-gray-900 dark:text-white"
                       >
                         Credit Card
@@ -301,20 +339,20 @@ const Checkout: React.FC = () => {
                   <div className="flex items-start">
                     <div className="flex h-5 items-center">
                       <input
-                        id="pay-on-delivery"
+                        id="payment_on_delivery"
                         aria-describedby="pay-on-delivery-text"
                         type="radio"
                         name="payment-method"
-                        value=""
+                        value="payment_on_delivery"
                         className="h-4 w-4 border-gray-300 bg-white text-primary-600 focus:ring-2 focus:ring-primary-600 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary-600"
                       />
                     </div>
                     <div className="ms-4 text-sm">
                       <label
-                        htmlFor="pay-on-delivery"
+                        htmlFor="payment_on_delivery"
                         className="font-medium leading-none text-gray-900 dark:text-white"
                       >
-                        Payment on delivery
+                        Payment on Delivery
                       </label>
                       <p
                         id="pay-on-delivery-text"
@@ -350,7 +388,7 @@ const Checkout: React.FC = () => {
                         aria-describedby="mpesa-text"
                         type="radio"
                         name="payment-method"
-                        value=""
+                        value="mpesa"
                         className="h-4 w-4 border-gray-300 bg-white text-primary-600 focus:ring-2 focus:ring-primary-600 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-primary-600"
                       />
                     </div>
@@ -402,7 +440,6 @@ const Checkout: React.FC = () => {
                   id="voucher"
                   className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
                   placeholder=""
-                  required
                 />
                 <button
                   type="button"
@@ -412,8 +449,7 @@ const Checkout: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>{" "}
-          {/* Closes min-w-0 flex-1 space-y-8 */}
+          </div>
           {/* Right Column: Order Summary */}
           <div className="mt-6 w-full space-y-6 sm:mt-8 lg:mt-0 lg:max-w-xs xl:max-w-md">
             <div className="flow-root">
@@ -492,10 +528,8 @@ const Checkout: React.FC = () => {
                 )}
               </div>
             </div>
-          </div>{" "}
-          {/* Closes order summary column */}
-        </div>{" "}
-        {/* Closes main content layout */}
+          </div>
+        </div>
       </form>
       <AddDeliveryDetails />
     </section>

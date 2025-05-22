@@ -334,25 +334,7 @@ const OrderSummary: React.FC = () => {
                   <dt className="text-base font-medium text-gray-900 dark:text-white">
                     Delivery Field
                   </dt>
-                  {/* <dd className="mt-1 text-base font-normal text-gray-500 dark:text-gray-400">
-                    {deliveryAddress ? (
-                      <>
-                        {deliveryAddress.full_name}
-                        <br />
-                        {deliveryAddress.phone_number}
-                        <br />
-                        {deliveryAddress.street}
-                        <br />
-                        {deliveryAddress.city}
-                        {deliveryAddress.region &&
-                          `, ${deliveryAddress.region}`}
-                        <br />
-                        {deliveryAddress.postal_code}, {deliveryAddress.country}
-                      </>
-                    ) : (
-                      "No delivery address provided."
-                    )}
-                  </dd> */}
+                  
                   {/* <button
                     type="button"
                     data-modal-target="deliveryInformationModal"
