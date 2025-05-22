@@ -1,23 +1,31 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import type { ReactNode } from "react";
+// ShoppingCartContext.tsx
+import { createContext, useContext } from "react";
 import { useLocalStorage } from "../cart/useLocalStorage";
+import type { ReactNode } from "react";
 
 type ShoppingCartProviderProps = {
   children: ReactNode;
 };
 
-// Updated CartItem type to include name and price
 type CartItem = {
   id: number;
   name: string;
   price: number;
-  quantity: number;
   img_url: string | null;
+  quantity: number;
 };
 
-// Updated context type with new addToCart function
+type DeliveryMethod = "pickup" | "delivery" | null;
+
+type PaymentMethod = "pay-now" | "pay-later" | null;
+
 type ShoppingCartContext = {
-  addToCart: (product: { id: number; name: string; price: number }) => void;
+  addToCart: (product: {
+    id: number;
+    name: string;
+    price: number;
+    img_url: string | null;
+  }) => void;
   increaseCartQuantity: (id: number) => void;
   decreaseCartQuantity: (id: number) => void;
   removeFromCart: (id: number) => void;
@@ -25,6 +33,12 @@ type ShoppingCartContext = {
   getItemQuantity: (id: number) => number;
   cartQuantity: number;
   cartItems: CartItem[];
+  deliveryMethod: DeliveryMethod;
+  setDeliveryMethod: (method: DeliveryMethod) => void;
+  paymentMethod: PaymentMethod;
+  setPaymentMethod: (method: PaymentMethod) => void;
+  mpesaPhone: string | null;
+  setMpesaPhone: (phone: string | null) => void;
 };
 
 const ShoppingCartContext = createContext({} as ShoppingCartContext);
@@ -38,6 +52,18 @@ export function ShoppingCartProvider({ children }: ShoppingCartProviderProps) {
     "shopping-cart",
     []
   );
+  const [deliveryMethod, setDeliveryMethod] = useLocalStorage<DeliveryMethod>(
+    "delivery-method",
+    null
+  );
+  const [paymentMethod, setPaymentMethod] = useLocalStorage<PaymentMethod>(
+    "payment-method",
+    null
+  );
+  const [mpesaPhone, setMpesaPhone] = useLocalStorage<string | null>(
+    "mpesa-phone",
+    null
+  );
 
   const cartQuantity = cartItems.reduce(
     (quantity, item) => item.quantity + quantity,
@@ -48,7 +74,6 @@ export function ShoppingCartProvider({ children }: ShoppingCartProviderProps) {
     return cartItems.find((item) => item.id === id)?.quantity || 0;
   }
 
-  // New function to add items with name and price
   function addToCart(product: {
     id: number;
     name: string;
@@ -57,10 +82,8 @@ export function ShoppingCartProvider({ children }: ShoppingCartProviderProps) {
   }) {
     setCartItems((currItems) => {
       if (currItems.find((item) => item.id === product.id) == null) {
-        // Item not in cart: add it with quantity 1
         return [...currItems, { ...product, quantity: 1 }];
       } else {
-        // Item exists: increase its quantity
         return currItems.map((item) =>
           item.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
@@ -70,7 +93,6 @@ export function ShoppingCartProvider({ children }: ShoppingCartProviderProps) {
     });
   }
 
-  // Modified to only increase quantity if item exists
   function increaseCartQuantity(id: number) {
     setCartItems((currItems) =>
       currItems.map((item) =>
@@ -110,6 +132,12 @@ export function ShoppingCartProvider({ children }: ShoppingCartProviderProps) {
         getItemQuantity,
         cartItems,
         cartQuantity,
+        deliveryMethod,
+        setDeliveryMethod,
+        paymentMethod,
+        setPaymentMethod,
+        mpesaPhone,
+        setMpesaPhone,
       }}
     >
       {children}

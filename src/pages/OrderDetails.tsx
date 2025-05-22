@@ -251,7 +251,7 @@ const OrderDetails: React.FC = () => {
                     </svg>
                   </span>
                   <h4 className="mb-0.5 text-base font-semibold text-gray-900 dark:text-white">
-                    Estimated delivery in 24 Nov 2023
+                    Estimated delivery in 3 working days upon payment
                   </h4>
                   <p className="text-sm font-normal text-gray-500 dark:text-gray-400">
                     Products delivered
@@ -306,7 +306,7 @@ const OrderDetails: React.FC = () => {
                       />
                     </svg>
                   </span>
-                  <h4 className="mb-0.5 font-semibold">23 Nov 2023, 15:15</h4>
+                  <h4 className="mb-0.5 font-semibold">22 April 2025, 7:15</h4>
                   <p className="text-sm">Products in the courier's warehouse</p>
                 </li>
 
@@ -331,7 +331,7 @@ const OrderDetails: React.FC = () => {
                     </svg>
                   </span>
                   <h4 className="mb-0.5 text-base font-semibold">
-                    22 Nov 2023, 12:27
+                    23 April 2025, 7:27
                   </h4>
                   <p className="text-sm">
                     Products delivered to the courier - DHL Express
@@ -358,7 +358,7 @@ const OrderDetails: React.FC = () => {
                       />
                     </svg>
                   </span>
-                  <h4 className="mb-0.5 font-semibold">19 Nov 2023, 10:47</h4>
+                  <h4 className="mb-0.5 font-semibold">24 April 2025, 10:47</h4>
                   <p className="text-sm">Payment accepted - VISA Credit Card</p>
                 </li>
 
@@ -395,14 +395,14 @@ const OrderDetails: React.FC = () => {
                 <button
                   onClick={() => navigate("/store")}
                   type="button"
-                  className="w-full rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700"
+                  className=" w-full rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700"
                 >
                   Shop
                 </button>
 
                 <a
                   href="/orders-overview"
-                  className="mt-4 flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 sm:mt-0"
+                  className="bg-blue-700 mt-4 flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 sm:mt-0"
                 >
                   My Orders
                 </a>
