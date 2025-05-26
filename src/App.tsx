@@ -13,7 +13,6 @@ import Checkout from "./pages/Checkout";
 import OrderSummary from "./pages/Order-Summary";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import OrderDetails from "./pages/OrderDetails";
-import OrderTracking from "./pages/OrderTracking";
 import OrdersOverview from "./pages/OrdersOverview";
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from "react-toastify";
@@ -47,8 +46,7 @@ function App() {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/order-summary" element={<OrderSummary />} />
             <Route path="/order-confirmation" element={<OrderConfirmation />} />
-            <Route path="/order-tracking" element={<OrderTracking />} />
-            <Route path="/order-details" element={<OrderDetails />} />
+            <Route path="/order-details/:orderId" element={<OrderDetails />} />
             <Route path="/orders-overview" element={<OrdersOverview />} />
             <Route path="/test-products" element={<AddressManager />} />
           </Route>

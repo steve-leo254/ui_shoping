@@ -1,5 +1,5 @@
 // Checkout.tsx
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useFetchAddresses } from "../components/useFetchAddresses";
@@ -12,21 +12,36 @@ import PaymentOptions from "../components/paymentOptions";
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
-  const { cartItems, deliveryMethod, paymentMethod, mpesaPhone } = useShoppingCart();
+  const {
+    cartItems,
+    deliveryMethod,
+    paymentMethod,
+    mpesaPhone,
+    selectedAddress,
+    setSelectedAddress,
+  } = useShoppingCart();
+  const { addresses, loading, error } = useFetchAddresses();
+
+  // Set default address as selectedAddress if none is selected
+  useEffect(() => {
+    if (addresses && addresses.length > 0 && !selectedAddress) {
+      const defaultAddress = addresses.find((addr) => addr.is_default);
+      if (defaultAddress) {
+        setSelectedAddress(defaultAddress);
+      }
+    }
+  }, [addresses, selectedAddress, setSelectedAddress]);
 
   // Calculate subtotal from cartItems
-  const subtotal = cartItems.reduce((total, item) => total + item.quantity * item.price, 0);
-
-  // Delivery fee based on delivery method
+  const subtotal = cartItems.reduce(
+    (total, item) => total + item.quantity * item.price,
+    0
+  );
   const deliveryFee = deliveryMethod === "delivery" ? 150 : 0; // KSh 150 for delivery, 0 for pickup
-
-  // Fixed tax value
   const tax = 199;
-
-  // Calculate total
   const total = subtotal + deliveryFee + tax;
 
-  // Validate M-Pesa phone number (basic validation: 10 digits starting with 07)
+  // Validate M-Pesa phone number
   const isValidMpesaPhone = (phone: string | null) => {
     return phone ? /^07\d{8}$/.test(phone) : false;
   };
@@ -37,19 +52,25 @@ const Checkout: React.FC = () => {
       toast.error("Please select a delivery method");
       return;
     }
+    if (deliveryMethod === "delivery" && !selectedAddress) {
+      toast.error("Please select a delivery address");
+      return;
+    }
     if (!paymentMethod) {
       toast.error("Please select a payment method");
       return;
     }
     if (paymentMethod === "pay-now" && !isValidMpesaPhone(mpesaPhone)) {
-      toast.error("Please enter a valid M-Pesa phone number (e.g., 0712345678)");
+      toast.error(
+        "Please enter a valid M-Pesa phone number (e.g., 0712345678)"
+      );
       return;
     }
-    // All validations passed, proceed to order summary
-    navigate("/order-summary", { state: { deliveryMethod, paymentMethod, mpesaPhone } });
+    navigate("/order-summary", {
+      state: { deliveryMethod, paymentMethod, mpesaPhone },
+    });
   };
 
-  // Handle empty cart
   if (cartItems.length === 0) {
     return (
       <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-16">
@@ -65,14 +86,15 @@ const Checkout: React.FC = () => {
                 className="text-primary-700 underline hover:no-underline dark:text-primary-500"
               >
                 Return to cart
-              </a>
-              {" or "}
+              </a>{" "}
+              or{" "}
               <a
                 href="/store"
                 className="text-primary-700 underline hover:no-underline dark:text-primary-500"
               >
                 continue shopping
-              </a>.
+              </a>
+              .
             </p>
           </div>
         </div>
@@ -116,7 +138,6 @@ const Checkout: React.FC = () => {
               Cart
             </span>
           </a>
-
           <a
             href="/checkout"
             className="after:border-1 flex items-center text-primary-700 after:mx-6 after:hidden after:h-1 after:w-full after:border-b after:border-gray-200 dark:text-primary-500 dark:after:border-gray-700 sm:after:inline-block sm:after:content-[''] md:w-full xl:after:mx-10"
@@ -142,7 +163,6 @@ const Checkout: React.FC = () => {
               Checkout
             </span>
           </a>
-
           <a href="/order-summary" className="flex shrink-0 items-center">
             <svg
               className="me-2 h-4 w-4 sm:h-5 sm:w-5"
@@ -217,7 +237,6 @@ const Checkout: React.FC = () => {
                     {formatCurrency(subtotal)}
                   </dd>
                 </dl>
-
                 <dl className="flex items-center justify-between gap-4 py-3">
                   <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
                     Delivery Fee
@@ -226,7 +245,6 @@ const Checkout: React.FC = () => {
                     {formatCurrency(deliveryFee)}
                   </dd>
                 </dl>
-
                 <dl className="flex items-center justify-between gap-4 py-3">
                   <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
                     Tax
@@ -235,7 +253,6 @@ const Checkout: React.FC = () => {
                     {formatCurrency(tax)}
                   </dd>
                 </dl>
-
                 <dl className="flex items-center justify-between gap-4 py-3">
                   <dt className="text-base font-bold text-gray-900 dark:text-white">
                     Total
@@ -246,7 +263,6 @@ const Checkout: React.FC = () => {
                 </dl>
               </div>
             </div>
-
             <div className="space-y-3">
               <button
                 type="submit"
@@ -254,7 +270,6 @@ const Checkout: React.FC = () => {
               >
                 Proceed to Payment
               </button>
-
               <p className="text-sm font-normal text-gray-500 dark:text-gray-400">
                 One or more items in your cart require an account.{" "}
                 <a

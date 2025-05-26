@@ -156,6 +156,7 @@ const AddProduct: React.FC = () => {
         },
       });
       toast.success('Product added successfully');
+      window.location.reload(); 
       // Reset form
       setFormData({
         name: '',

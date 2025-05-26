@@ -1,30 +1,122 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useShoppingCart } from "../context/ShoppingCartContext";
+import { formatCurrency } from "../cart/formatCurrency";
+import { toast } from "react-toastify";
 
 const OrderSummary: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cartItems, selectedAddress } = useShoppingCart(); // Assuming ShoppingCartContext provides these
+  const { cartItems, selectedAddress, clearCart } = useShoppingCart(); // Assuming ShoppingCartContext provides these
+  // Ensure cartItems and selectedAddress are defined
+  const addressId = selectedAddress?.id;
 
   // Extract data from navigation state
-  const { deliveryMethod, paymentMethod, mpesaPhone } = location.state || {};
+  const { deliveryMethod, mpesaPhone } = location.state || {};
 
   // Calculate order summary values
-  const subtotal = cartItems.reduce((total, item) => total + item.quantity * item.price, 0);
+  const subtotal = cartItems.reduce(
+    (total, item) => total + item.quantity * item.price,
+    0
+  );
   const deliveryFee = deliveryMethod === "delivery" ? 150 : 0; // Example logic
   const tax = 199; // Fixed tax value, can be made dynamic
   const total = subtotal + deliveryFee + tax;
-
-  // Utility function to format currency
-  const formatCurrency = (amount) => {
-    return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
 
   // Function to format the address
   const formatAddress = (address) => {
     if (!address) return "No address selected";
     return `${address.first_name} ${address.last_name} - ${address.phone_number}, ${address.address}, ${address.city}, ${address.region}`;
+  };
+
+  // Order Sending logic
+
+  const handleSendOrder = async () => {
+    try {
+      // Retrieve the authentication token
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Please log in to place an order");
+        navigate("/login");
+        return;
+      }
+
+      // Validate required data
+      if (!cartItems || cartItems.length === 0) {
+        toast.error("Your cart is empty");
+        return;
+      }
+      if (deliveryMethod === "delivery" && !selectedAddress?.id) {
+        toast.error("Please select a delivery address");
+        return;
+      }
+
+      // Prepare the payload for the API
+      const payload = {
+        cart: cartItems.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+        })),
+        address_id: addressId,
+      };
+
+      // Make the API request
+      const response = await fetch("http://localhost:8000/create_order", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // Handle the response
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to create order");
+      }
+
+      const data = await response.json();
+
+      // Format the address fields for OrderConfirmation
+      const formattedAddress = selectedAddress
+        ? `${selectedAddress.address}, ${selectedAddress.city}, ${selectedAddress.region}`
+        : "No address selected";
+      const name = selectedAddress
+        ? `${selectedAddress.first_name} ${selectedAddress.last_name}`
+        : "No name provided";
+      const phoneNumber =
+        selectedAddress?.phone_number || "No phone number provided";
+
+      // Option 1: Use client-side date if API doesn't provide it
+      const orderDate = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      // Option 2: If the API returns the date, use data.order_date instead
+      // const orderDate = data.order_date || new Date().toLocaleDateString("en-US", { ... });
+
+      toast.success("Order created successfully!");
+       // Navigate to OrderConfirmation with required fields
+      navigate("/order-confirmation", {
+        state: {
+          orderId: data.order_id,
+          orderDate, // Use either client-side or API-provided date
+          name,
+          address: formattedAddress,
+          phoneNumber,
+        },
+      });
+      clearCart();
+     
+    } catch (error) {
+      toast.error(
+        error.message || "An error occurred while creating the order"
+      );
+      console.error("Order submission error:", error);
+    }
   };
 
   return (
@@ -66,15 +158,24 @@ const OrderSummary: React.FC = () => {
                       <tr key={item.id}>
                         <td className="whitespace-nowrap py-4 md:w-[384px]">
                           <div className="flex items-center gap-4">
-                            <a href="#" className="flex items-center aspect-square w-10 h-10 shrink-0">
+                            <a
+                              href="#"
+                              className="flex items-center aspect-square w-10 h-10 shrink-0"
+                            >
                               <img
                                 className="h-auto w-full max-h-full dark:hidden"
-                                src={item.img_url || "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front.svg"}
+                                src={
+                                  item.img_url ||
+                                  "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front.svg"
+                                }
                                 alt={item.name}
                               />
                               <img
                                 className="hidden h-auto w-full max-h-full dark:block"
-                                src={item.img_url || "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front-dark.svg"}
+                                src={
+                                  item.img_url ||
+                                  "https://flowbite.s3.amazonaws.com/blocks/e-commerce/imac-front-dark.svg"
+                                }
                                 alt={item.name}
                               />
                             </a>
@@ -102,19 +203,25 @@ const OrderSummary: React.FC = () => {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <dl className="flex items-center justify-between gap-4">
-                      <dt className="text-gray-500 dark:text-gray-400">Original price</dt>
+                      <dt className="text-gray-500 dark:text-gray-400">
+                        Original price
+                      </dt>
                       <dd className="text-base font-medium text-gray-900 dark:text-white">
                         {formatCurrency(subtotal)}
                       </dd>
                     </dl>
                     <dl className="flex items-center justify-between gap-4">
-                      <dt className="text-gray-500 dark:text-gray-400">Savings</dt>
+                      <dt className="text-gray-500 dark:text-gray-400">
+                        Savings
+                      </dt>
                       <dd className="text-base font-medium text-green-500">
                         -{formatCurrency(0)} {/* Placeholder for savings */}
                       </dd>
                     </dl>
                     <dl className="flex items-center justify-between gap-4">
-                      <dt className="text-gray-500 dark:text-gray-400">Delivery Fee</dt>
+                      <dt className="text-gray-500 dark:text-gray-400">
+                        Delivery Fee
+                      </dt>
                       <dd className="text-base font-medium text-gray-900 dark:text-white">
                         {formatCurrency(deliveryFee)}
                       </dd>
@@ -127,7 +234,9 @@ const OrderSummary: React.FC = () => {
                     </dl>
                   </div>
                   <dl className="flex items-center justify-between gap-4 border-t border-gray-200 pt-2 dark:border-gray-700">
-                    <dt className="text-lg font-bold text-gray-900 dark:text-white">Total</dt>
+                    <dt className="text-lg font-bold text-gray-900 dark:text-white">
+                      Total
+                    </dt>
                     <dd className="text-lg font-bold text-gray-900 dark:text-white">
                       {formatCurrency(total)}
                     </dd>
@@ -158,16 +267,16 @@ const OrderSummary: React.FC = () => {
                 </div>
 
                 <div className="gap-4 sm:flex sm:items-center">
-                  <button
-                    type="button"
+                  <a
+                    href="/store"
                     className="w-full rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700"
                   >
                     Return to Shopping
-                  </button>
+                  </a>
                   <button
-                    onClick={() => navigate("/order-confirmation")}
+                    onClick={() => handleSendOrder()}
                     type="submit"
-                    className="mt-4 flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 sm:mt-0"
+                    className="bg-blue-600 mt-4 flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 sm:mt-0"
                   >
                     Send the order
                   </button>

@@ -1,6 +1,6 @@
 // ShoppingCartContext.tsx
 import { createContext, useContext } from "react";
-import { useLocalStorage } from "../cart/useLocalStorage";
+import { useLocalStorage } from "../cart/useLocalStorage"; // Adjust path as needed
 import type { ReactNode } from "react";
 
 type ShoppingCartProviderProps = {
@@ -15,8 +15,18 @@ type CartItem = {
   quantity: number;
 };
 
-type DeliveryMethod = "pickup" | "delivery" | null;
+type Address = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  address: string;
+  city: string;
+  region: string;
+  is_default: boolean;
+};
 
+type DeliveryMethod = "pickup" | "delivery" | null;
 type PaymentMethod = "pay-now" | "pay-later" | null;
 
 type ShoppingCartContext = {
@@ -39,6 +49,8 @@ type ShoppingCartContext = {
   setPaymentMethod: (method: PaymentMethod) => void;
   mpesaPhone: string | null;
   setMpesaPhone: (phone: string | null) => void;
+  selectedAddress: Address | null;
+  setSelectedAddress: (address: Address | null) => void;
 };
 
 const ShoppingCartContext = createContext({} as ShoppingCartContext);
@@ -48,46 +60,25 @@ export function useShoppingCart() {
 }
 
 export function ShoppingCartProvider({ children }: ShoppingCartProviderProps) {
-  const [cartItems, setCartItems] = useLocalStorage<CartItem[]>(
-    "shopping-cart",
-    []
-  );
-  const [deliveryMethod, setDeliveryMethod] = useLocalStorage<DeliveryMethod>(
-    "delivery-method",
-    null
-  );
-  const [paymentMethod, setPaymentMethod] = useLocalStorage<PaymentMethod>(
-    "payment-method",
-    null
-  );
-  const [mpesaPhone, setMpesaPhone] = useLocalStorage<string | null>(
-    "mpesa-phone",
-    null
-  );
+  const [cartItems, setCartItems] = useLocalStorage<CartItem[]>("shopping-cart", []);
+  const [deliveryMethod, setDeliveryMethod] = useLocalStorage<DeliveryMethod>("delivery-method", null);
+  const [paymentMethod, setPaymentMethod] = useLocalStorage<PaymentMethod>("payment-method", null);
+  const [mpesaPhone, setMpesaPhone] = useLocalStorage<string | null>("mpesa-phone", null);
+  const [selectedAddress, setSelectedAddress] = useLocalStorage<Address | null>("selected-address", null);
 
-  const cartQuantity = cartItems.reduce(
-    (quantity, item) => item.quantity + quantity,
-    0
-  );
+  const cartQuantity = cartItems.reduce((quantity, item) => item.quantity + quantity, 0);
 
   function getItemQuantity(id: number) {
     return cartItems.find((item) => item.id === id)?.quantity || 0;
   }
 
-  function addToCart(product: {
-    id: number;
-    name: string;
-    price: number;
-    img_url: string | null;
-  }) {
+  function addToCart(product: { id: number; name: string; price: number; img_url: string | null }) {
     setCartItems((currItems) => {
       if (currItems.find((item) => item.id === product.id) == null) {
         return [...currItems, { ...product, quantity: 1 }];
       } else {
         return currItems.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
     });
@@ -138,6 +129,8 @@ export function ShoppingCartProvider({ children }: ShoppingCartProviderProps) {
         setPaymentMethod,
         mpesaPhone,
         setMpesaPhone,
+        selectedAddress,
+        setSelectedAddress,
       }}
     >
       {children}
