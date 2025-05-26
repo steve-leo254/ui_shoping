@@ -422,7 +422,7 @@ const OrderDetails: React.FC = () => {
                     </svg>
                   </span>
                   <div>
-                    <h4 className="mb-0.5 font-semibold">19 Nov 2023, 10:45</h4>
+                    <h4 className="mb-0.5 font-semibold">19 Nov 2025, 10:45</h4>
                     <a href="#" className="text-sm font-medium hover:underline">
                       Order confirmed - Receipt #647563
                     </a>
