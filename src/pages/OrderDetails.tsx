@@ -72,12 +72,15 @@ const OrderDetails: React.FC = () => {
           return;
         }
 
-        const response = await fetch(`http://localhost:8000/orders/${orderId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await fetch(
+          `http://localhost:8000/orders/${orderId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         if (!response.ok) {
           if (response.status === 404) {
@@ -150,12 +153,12 @@ const OrderDetails: React.FC = () => {
   );
   const taxAmount = subtotal * TAX_RATE;
   const calculatedTotal = subtotal + DELIVERY_FEE + taxAmount;
-  
+
   // Debug logging to check calculations
-  console.log('Subtotal:', subtotal);
-  console.log('Tax Amount:', taxAmount);
-  console.log('Delivery Fee:', DELIVERY_FEE);
-  console.log('Calculated Total:', calculatedTotal);
+  console.log("Subtotal:", subtotal);
+  console.log("Tax Amount:", taxAmount);
+  console.log("Delivery Fee:", DELIVERY_FEE);
+  console.log("Calculated Total:", calculatedTotal);
 
   // Format the address
   const formatAddress = (address: Address | undefined) => {
@@ -422,9 +425,18 @@ const OrderDetails: React.FC = () => {
                     </svg>
                   </span>
                   <div>
-                    <h4 className="mb-0.5 font-semibold">19 Nov 2025, 10:45</h4>
+                    <h4 className="mb-0.5 font-semibold">
+                      Ordered on{" "}
+                      {new Date(order.datetime).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </h4>
                     <a href="#" className="text-sm font-medium hover:underline">
-                      Order confirmed - Receipt #647563
+                      Your Order number is {order.order_id}.
                     </a>
                   </div>
                 </li>
