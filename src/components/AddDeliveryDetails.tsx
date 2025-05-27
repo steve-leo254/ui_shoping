@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import { useShoppingCart } from "../context/ShoppingCartContext"; 
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const AddDeliveryDetails: React.FC = () => {
   const { token } = useAuth();
+  const { setSelectedAddress } = useShoppingCart(); // Get setSelectedAddress from context
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -88,14 +90,48 @@ const AddDeliveryDetails: React.FC = () => {
       });
       return;
     }
+    
     try {
-      await axios.post("http://localhost:8000/addresses", formData, {
+      // Submit the address to the backend
+      const response = await axios.post("http://localhost:8000/addresses", formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      // If the address was set as default, update the shopping cart context
+      if (formData.is_default && response.data) {
+        const newAddress = {
+          id: response.data.id, // Assuming the API returns the created address with an ID
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone_number: formData.phone_number,
+          address: formData.address,
+          city: formData.city,
+          region: formData.region,
+          is_default: formData.is_default,
+        };
+        
+        // Update the shopping cart context with the new default address
+        setSelectedAddress(newAddress);
+      }
+
       toast.success("Address added successfully", {
         style: { border: "1px solid #10b981", color: "#111827" },
         progressStyle: { background: "#10b981" },
       });
+      
+      // Reset form
+      setFormData({
+        first_name: "",
+        last_name: "",
+        phone_number: "",
+        address: "",
+        additional_info: "",
+        city: "",
+        region: "",
+        is_default: false,
+      });
+      
+      // Close modal
       document.getElementById("close-modal-button")?.click();
     } catch (err) {
       toast.error("Failed to add address", {
@@ -136,9 +172,9 @@ const AddDeliveryDetails: React.FC = () => {
                 >
                   <path
                     stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
                     d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
                   />
                 </svg>
