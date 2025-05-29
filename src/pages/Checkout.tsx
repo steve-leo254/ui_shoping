@@ -38,8 +38,8 @@ const Checkout: React.FC = () => {
     0
   );
   const deliveryFee = deliveryMethod === "delivery" ? 150 : 0; // KSh 150 for delivery, 0 for pickup
-  const tax = 199;
-  const total = subtotal + deliveryFee + tax;
+  // const tax = 199;
+  const total = subtotal + deliveryFee ;
 
   // Validate M-Pesa phone number
   const isValidMpesaPhone = (phone: string | null) => {
@@ -245,14 +245,7 @@ const Checkout: React.FC = () => {
                     {formatCurrency(deliveryFee)}
                   </dd>
                 </dl>
-                <dl className="flex items-center justify-between gap-4 py-3">
-                  <dt className="text-base font-normal text-gray-500 dark:text-gray-400">
-                    Tax
-                  </dt>
-                  <dd className="text-base font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(tax)}
-                  </dd>
-                </dl>
+                
                 <dl className="flex items-center justify-between gap-4 py-3">
                   <dt className="text-base font-bold text-gray-900 dark:text-white">
                     Total

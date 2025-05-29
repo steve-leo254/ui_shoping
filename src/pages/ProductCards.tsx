@@ -285,7 +285,7 @@ const ProductCards: React.FC = () => {
               Error: {error}
             </div>
           ) : (
-            <div className="mb-4 grid gap-4 sm:grid-cols-2 md:mb-8 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="mb-4 grid gap-4 sm:grid-cols-3 md:mb-8 lg:grid-cols-4 xl:grid-cols-4">
               {products.map((product) => (
                 <div
                   key={product.id}

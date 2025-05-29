@@ -20,8 +20,8 @@ const OrderSummary: React.FC = () => {
     0
   );
   const deliveryFee = deliveryMethod === "delivery" ? 150 : 0; // Example logic
-  const tax = 199; // Fixed tax value, can be made dynamic
-  const total = subtotal + deliveryFee + tax;
+  
+  const total = subtotal + deliveryFee ;
 
   // Function to format the address
   const formatAddress = (address) => {
@@ -226,12 +226,7 @@ const OrderSummary: React.FC = () => {
                         {formatCurrency(deliveryFee)}
                       </dd>
                     </dl>
-                    <dl className="flex items-center justify-between gap-4">
-                      <dt className="text-gray-500 dark:text-gray-400">Tax</dt>
-                      <dd className="text-base font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(tax)}
-                      </dd>
-                    </dl>
+                    
                   </div>
                   <dl className="flex items-center justify-between gap-4 border-t border-gray-200 pt-2 dark:border-gray-700">
                     <dt className="text-lg font-bold text-gray-900 dark:text-white">

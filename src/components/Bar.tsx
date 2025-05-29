@@ -21,7 +21,7 @@ const Bar: React.FC = () => {
   };
   return (
     <>
-      <nav className="bg-white dark:bg-gray-800 antialiased">
+      <nav className="bg-white dark:bg-gray-800 antialiased sticky top-0 z-10">
         <div className="max-w-screen-xl px-4 mx-auto 2xl:px-0 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
@@ -199,12 +199,12 @@ const Bar: React.FC = () => {
                   </li>
                   <li>
                     <a
-                      href="/orders-overview"
+                      href="/ordersOview"
                       title=""
                       className="inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600"
                     >
                       {" "}
-                      Our Orders{" "}
+                      My Orders{" "}
                     </a>
                   </li>
                   <li>
