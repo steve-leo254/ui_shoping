@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-
 
 // Define interfaces for type safety
 interface Address {
@@ -76,6 +75,13 @@ const AdminOrderTable: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [accountInfo, setAccountInfo] = useState<User | null>(null);
+  
+  // New state for dropdown and modal management
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  
+  const dropdownRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   // Status options aligned with backend OrderStatus enum
   const statusOptions = [
@@ -86,10 +92,27 @@ const AdminOrderTable: React.FC = () => {
     { value: "cancelled", label: "Cancelled" },
   ];
 
-  // Initialize Flowbite for dropdowns and modals
+  // Handle clicks outside dropdown to close it
   useEffect(() => {
-    initFlowbite();
-  }, []);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openDropdown !== null) {
+        const dropdownElement = dropdownRefs.current[openDropdown];
+        if (dropdownElement && !dropdownElement.contains(event.target as Node)) {
+          setOpenDropdown(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdown]);
+
+  // Toggle dropdown for specific order
+  const toggleDropdown = (orderId: number) => {
+    setOpenDropdown(openDropdown === orderId ? null : orderId);
+  };
 
   // Fetch orders from the API
   const fetchOrders = async () => {
@@ -165,7 +188,7 @@ const AdminOrderTable: React.FC = () => {
 
       if (response.ok) {
         fetchOrders();
-        document.getElementById("deleteOrderModal")?.classList.add("hidden");
+        setShowDeleteModal(false);
         setSelectedOrderId(null);
       } else {
         const errorData = await response.json();
@@ -197,6 +220,7 @@ const AdminOrderTable: React.FC = () => {
 
       if (response.ok) {
         fetchOrders();
+        setOpenDropdown(null); // Close dropdown after action
       } else {
         const errorData = await response.json();
         setError(errorData.detail || `Failed to update order status to ${newStatus}.`);
@@ -268,7 +292,15 @@ const AdminOrderTable: React.FC = () => {
   // Show account information
   const showAccountInfo = (user: User) => {
     setAccountInfo(user);
-    document.getElementById("accountInfoModal")?.classList.remove("hidden");
+    setShowAccountModal(true);
+    setOpenDropdown(null); // Close dropdown
+  };
+
+  // Handle cancel order modal
+  const handleCancelOrder = (orderId: number) => {
+    setSelectedOrderId(orderId);
+    setShowDeleteModal(true);
+    setOpenDropdown(null); // Close dropdown
   };
 
   // Fetch orders on mount and when page, status, or search changes
@@ -364,7 +396,10 @@ const AdminOrderTable: React.FC = () => {
                           <a
                             href="#"
                             className="hover:underline"
-                            onClick={() => navigate(`/admin/orders/${order.order_id}`)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate(`/admin/orders/${order.order_id}`);
+                            }}
                           >
                             #{order.order_id}
                           </a>
@@ -410,12 +445,11 @@ const AdminOrderTable: React.FC = () => {
                           {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                         </dd>
                       </dl>
-                      <div className="w-full sm:flex sm:w-32 sm:items-center sm:justify-end sm:gap-4">
+                      <div className="w-full sm:flex sm:w-32 sm:items-center sm:justify-end sm:gap-4 relative">
                         <button
-                          id={`actionsMenuDropdownModal${order.order_id}`}
-                          data-dropdown-toggle={`dropdownOrderModal${order.order_id}`}
                           type="button"
                           className="flex w-full items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700 md:w-auto"
+                          onClick={() => toggleDropdown(order.order_id)}
                         >
                           Actions
                           <svg
@@ -429,61 +463,29 @@ const AdminOrderTable: React.FC = () => {
                           >
                             <path
                               stroke="currentColor"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
                               d="m19 9-7 7-7-7"
                             />
                           </svg>
                         </button>
-                        <div
-                          id={`dropdownOrderModal${order.order_id}`}
-                          className="z-10 hidden w-48 divide-y divide-gray-100 rounded-lg bg-white shadow dark:bg-gray-700"
-                        >
-                          <ul
-                            className="p-2 text-left text-sm font-medium text-gray-500 dark:text-gray-400"
-                            aria-labelledby={`actionsMenuDropdownModal${order.order_id}`}
+                        {openDropdown === order.order_id && (
+                          <div
+                            ref={(el) => dropdownRefs.current[order.order_id] = el}
+                            className="absolute right-0 top-full mt-1 z-10 w-48 divide-y divide-gray-100 rounded-lg bg-white shadow-lg dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
                           >
-                            <li>
-                              <a
-                                href="#"
-                                className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white"
-                                onClick={() => navigate(`/admin/orders/${order.order_id}`)}
-                              >
-                                <svg
-                                  className="me-1.5 h-4 w-4 text-gray-400 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
-                                  aria-hidden="true"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="24"
-                                  height="24"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"
-                                  />
-                                  <path
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                                  />
-                                </svg>
-                                Order details
-                              </a>
-                            </li>
-                            {order.status !== "cancelled" && (
+                            <ul className="p-2 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
                               <li>
-                                <a
-                                  href="#"
-                                  data-modal-target="deleteOrderModal"
-                                  data-modal-toggle="deleteOrderModal"
-                                  className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                                  onClick={() => setSelectedOrderId(order.order_id)}
+                                <button
+                                  className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white"
+                                  onClick={() => {
+                                    navigate(`/admin/orders/${order.order_id}`);
+                                    setOpenDropdown(null);
+                                  }}
                                 >
                                   <svg
-                                    className="me-1.5 h-4 w-4"
+                                    className="me-1.5 h-4 w-4 text-gray-400 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
                                     aria-hidden="true"
                                     xmlns="http://www.w3.org/2000/svg"
                                     width="24"
@@ -493,56 +495,52 @@ const AdminOrderTable: React.FC = () => {
                                   >
                                     <path
                                       stroke="currentColor"
-                                      stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      stroke-width="2"
-                                      d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"
+                                      strokeWidth="2"
+                                      d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"
+                                    />
+                                    <path
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
                                     />
                                   </svg>
-                                  Cancel order
-                                </a>
+                                  Order details
+                                </button>
                               </li>
-                            )}
-                            <li>
-                              <a
-                                href="#"
-                                className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-gray-500 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white"
-                                onClick={() => order.user && showAccountInfo(order.user)}
-                              >
-                                <svg
-                                  className="me-1.5 h-4 w-4 text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
-                                  aria-hidden="true"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="24"
-                                  height="24"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    stroke="currentColor"
-                                    stroke-linecap="round"
-                                    stroke-width="2"
-                                    d="M16 12a4 4 0 1 0-0-8 4 4 0 0 0 0 8z"
-                                  />
-                                  <path
-                                    stroke="currentColor"
-                                    stroke-linecap="round"
-                                    stroke-width="2"
-                                    d="M3 20v-1 a4 4 0 0 1 4-4 h3"
-                                  />
-                                </svg>
-                                Account info
-                              </a>
-                            </li>
-                            {order.status !== "delivered" && order.status !== "cancelled" && (
+                              {order.status !== "cancelled" && (
+                                <li>
+                                  <button
+                                    className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                    onClick={() => handleCancelOrder(order.order_id)}
+                                  >
+                                    <svg
+                                      className="me-1.5 h-4 w-4"
+                                      aria-hidden="true"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="24"
+                                      height="24"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        stroke="currentColor"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"
+                                      />
+                                    </svg>
+                                    Cancel order
+                                  </button>
+                                </li>
+                              )}
                               <li>
-                                <a
-                                  href="#"
-                                  className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                                  onClick={() => updateOrderStatus(order.order_id, "delivered")}
+                                <button
+                                  className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-gray-500 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white"
+                                  onClick={() => order.user && showAccountInfo(order.user)}
                                 >
                                   <svg
-                                    className="me-1.5 h-4 w-4 text-blue-400 group-hover:text-blue-900 dark:group-hover:text-white"
+                                    className="me-1.5 h-4 w-4 text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
                                     aria-hidden="true"
                                     xmlns="http://www.w3.org/2000/svg"
                                     width="24"
@@ -552,18 +550,50 @@ const AdminOrderTable: React.FC = () => {
                                   >
                                     <path
                                       stroke="currentColor"
-                                      stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      stroke-width="2"
-                                      d="M5 11.917 9.724 16.5 19 7.5"
+                                      strokeLinecap="round"
+                                      strokeWidth="2"
+                                      d="M16 12a4 4 0 1 0-0-8 4 4 0 0 0 0 8z"
+                                    />
+                                    <path
+                                      stroke="currentColor"
+                                      strokeLinecap="round"
+                                      strokeWidth="2"
+                                      d="M3 20v-1 a4 4 0 0 1 4-4 h3"
                                     />
                                   </svg>
-                                  Mark as Delivered
-                                </a>
+                                  Account info
+                                </button>
                               </li>
-                            )}
-                          </ul>
-                        </div>
+                              {order.status !== "delivered" && order.status !== "cancelled" && (
+                                <li>
+                                  <button
+                                    className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                    onClick={() => updateOrderStatus(order.order_id, "delivered")}
+                                  >
+                                    <svg
+                                      className="me-1.5 h-4 w-4 text-blue-400 group-hover:text-blue-900 dark:group-hover:text-white"
+                                      aria-hidden="true"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="24"
+                                      height="24"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        stroke="currentColor"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M5 11.917 9.724 16.5 19 7.5"
+                                      />
+                                    </svg>
+                                    Mark as Delivered
+                                  </button>
+                                </li>
+                              )}
+                            </ul>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))
