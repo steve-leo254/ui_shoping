@@ -54,7 +54,7 @@ interface Order {
   order_id: number;
   total: number;
   datetime: string;
-  status: "pending" | "shipped" | "delivered" | "cancelled";
+  status: "pending" | "delivered" | "cancelled";
   user_id: number;
   delivery_fee: number;
   completed_at: string | null;
@@ -87,7 +87,7 @@ const AdminOrderTable: React.FC = () => {
   const statusOptions = [
     { value: "", label: "All Statuses" },
     { value: "pending", label: "Pending" },
-    { value: "shipped", label: "Shipped" },
+    
     { value: "delivered", label: "Delivered" },
     { value: "cancelled", label: "Cancelled" },
   ];
@@ -278,8 +278,6 @@ const AdminOrderTable: React.FC = () => {
     switch (status) {
       case "pending":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
-      case "shipped":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
       case "delivered":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
       case "cancelled":

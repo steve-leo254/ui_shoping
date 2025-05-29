@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { toast } from "react-toastify";
+
 
 // Define interfaces for type safety
 interface Address {
@@ -54,7 +57,7 @@ interface Order {
   order_id: number;
   total: number;
   datetime: string;
-  status: "pending" | "shipped" | "delivered" | "cancelled";
+  status: "pending" | "delivered" | "cancelled";
   user_id: number;
   delivery_fee: number;
   completed_at: string | null;
@@ -63,7 +66,7 @@ interface Order {
   order_details?: OrderDetail[];
 }
 
-const AdminOrderTable: React.FC = () => {
+const  AdminOrderTable: React.FC = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [total, setTotal] = useState(0);
@@ -75,19 +78,18 @@ const AdminOrderTable: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [accountInfo, setAccountInfo] = useState<User | null>(null);
-  
+
   // New state for dropdown and modal management
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
-  
+
   const dropdownRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   // Status options aligned with backend OrderStatus enum
   const statusOptions = [
     { value: "", label: "All Statuses" },
     { value: "pending", label: "Pending" },
-    { value: "shipped", label: "Shipped" },
     { value: "delivered", label: "Delivered" },
     { value: "cancelled", label: "Cancelled" },
   ];
@@ -97,15 +99,18 @@ const AdminOrderTable: React.FC = () => {
     const handleClickOutside = (event: MouseEvent) => {
       if (openDropdown !== null) {
         const dropdownElement = dropdownRefs.current[openDropdown];
-        if (dropdownElement && !dropdownElement.contains(event.target as Node)) {
+        if (
+          dropdownElement &&
+          !dropdownElement.contains(event.target as Node)
+        ) {
           setOpenDropdown(null);
         }
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [openDropdown]);
 
@@ -140,12 +145,15 @@ const AdminOrderTable: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/admin/orders?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `http://127.0.0.1:8000/admin/orders?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
@@ -154,7 +162,9 @@ const AdminOrderTable: React.FC = () => {
           throw new Error("Unauthorized or forbidden. Please log in as admin.");
         }
         const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to fetch orders: ${response.status}`);
+        throw new Error(
+          errorData.detail || `Failed to fetch orders: ${response.status}`
+        );
       }
 
       const data = await response.json();
@@ -168,40 +178,11 @@ const AdminOrderTable: React.FC = () => {
     }
   };
 
-  // Cancel order function
-  const cancelOrder = async (orderId: number) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setError("No authentication token found. Please log in.");
-      return;
-    }
-
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/orders/${orderId}/status`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: "cancelled" }),
-      });
-
-      if (response.ok) {
-        fetchOrders();
-        setShowDeleteModal(false);
-        setSelectedOrderId(null);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.detail || "Failed to cancel order. Please try again.");
-      }
-    } catch (error: any) {
-      console.error("Error cancelling order:", error);
-      setError(error.message || "Error cancelling order. Please try again.");
-    }
-  };
-
   // Update order status
-  const updateOrderStatus = async (orderId: number, newStatus: Order["status"]) => {
+  const updateOrderStatus = async (
+    orderId: number,
+    newStatus: Order["status"]
+  ) => {
     const token = localStorage.getItem("token");
     if (!token) {
       setError("No authentication token found. Please log in.");
@@ -209,25 +190,33 @@ const AdminOrderTable: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/orders/${orderId}/status`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const response = await axios.put(
+        `http://127.0.0.1:8000/update-order-status/${orderId}`,
+        { status: newStatus },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (response.ok) {
+      if (response.status === 200) {
+        toast.success(`Order status updated to ${newStatus}.`);
         fetchOrders();
         setOpenDropdown(null); // Close dropdown after action
       } else {
-        const errorData = await response.json();
-        setError(errorData.detail || `Failed to update order status to ${newStatus}.`);
+        const errorData = response.data;
+        setError(
+          errorData.detail || `Failed to update order status to ${newStatus}.`
+        );
       }
     } catch (error: any) {
       console.error("Error updating order status:", error);
-      setError(error.message || "Error updating order status. Please try again.");
+      setError(
+        error.response?.data?.detail ||
+          "Error updating order status. Please try again."
+      );
     }
   };
 
@@ -278,8 +267,6 @@ const AdminOrderTable: React.FC = () => {
     switch (status) {
       case "pending":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
-      case "shipped":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
       case "delivered":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
       case "cancelled":
@@ -442,7 +429,8 @@ const AdminOrderTable: React.FC = () => {
                             order.status
                           )}`}
                         >
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                          {order.status.charAt(0).toUpperCase() +
+                            order.status.slice(1)}
                         </dd>
                       </dl>
                       <div className="w-full sm:flex sm:w-32 sm:items-center sm:justify-end sm:gap-4 relative">
@@ -472,7 +460,9 @@ const AdminOrderTable: React.FC = () => {
                         </button>
                         {openDropdown === order.order_id && (
                           <div
-                            ref={(el) => dropdownRefs.current[order.order_id] = el}
+                            ref={(el) =>
+                              (dropdownRefs.current[order.order_id] = el)
+                            }
                             className="absolute right-0 top-full mt-1 z-10 w-48 divide-y divide-gray-100 rounded-lg bg-white shadow-lg dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
                           >
                             <ul className="p-2 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -507,37 +497,45 @@ const AdminOrderTable: React.FC = () => {
                                   Order details
                                 </button>
                               </li>
-                              {order.status !== "cancelled" && (
-                                <li>
-                                  <button
-                                    className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                                    onClick={() => handleCancelOrder(order.order_id)}
-                                  >
-                                    <svg
-                                      className="me-1.5 h-4 w-4"
-                                      aria-hidden="true"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      width="24"
-                                      height="24"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
+                              {order.status !== "cancelled" &&
+                                order.status !== "delivered" && (
+                                  <li>
+                                    <button
+                                      className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                      onClick={() =>
+                                        updateOrderStatus(
+                                          order.order_id,
+                                          "cancelled"
+                                        )
+                                      }
                                     >
-                                      <path
-                                        stroke="currentColor"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"
-                                      />
-                                    </svg>
-                                    Cancel order
-                                  </button>
-                                </li>
-                              )}
+                                      <svg
+                                        className="me-1.5 h-4 w-4"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          stroke="currentColor"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth="2"
+                                          d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"
+                                        />
+                                      </svg>
+                                      Cancel order
+                                    </button>
+                                  </li>
+                                )}
                               <li>
                                 <button
                                   className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-gray-500 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white"
-                                  onClick={() => order.user && showAccountInfo(order.user)}
+                                  onClick={() =>
+                                    order.user && showAccountInfo(order.user)
+                                  }
                                 >
                                   <svg
                                     className="me-1.5 h-4 w-4 text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
@@ -564,33 +562,39 @@ const AdminOrderTable: React.FC = () => {
                                   Account info
                                 </button>
                               </li>
-                              {order.status !== "delivered" && order.status !== "cancelled" && (
-                                <li>
-                                  <button
-                                    className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                                    onClick={() => updateOrderStatus(order.order_id, "delivered")}
-                                  >
-                                    <svg
-                                      className="me-1.5 h-4 w-4 text-blue-400 group-hover:text-blue-900 dark:group-hover:text-white"
-                                      aria-hidden="true"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      width="24"
-                                      height="24"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
+                              {order.status !== "delivered" &&
+                                order.status !== "cancelled" && (
+                                  <li>
+                                    <button
+                                      className="group inline-flex w-full items-center rounded-md px-3 py-2 text-sm text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                      onClick={() =>
+                                        updateOrderStatus(
+                                          order.order_id,
+                                          "delivered"
+                                        )
+                                      }
                                     >
-                                      <path
-                                        stroke="currentColor"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M5 11.917 9.724 16.5 19 7.5"
-                                      />
-                                    </svg>
-                                    Mark as Delivered
-                                  </button>
-                                </li>
-                              )}
+                                      <svg
+                                        className="me-1.5 h-4 w-4 text-blue-400 group-hover:text-blue-900 dark:group-hover:text-white"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          stroke="currentColor"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth="2"
+                                          d="M5 11.917 9.724 16.5 19 7.5"
+                                        />
+                                      </svg>
+                                      Mark as Delivered
+                                    </button>
+                                  </li>
+                                )}
                             </ul>
                           </div>
                         )}
@@ -693,7 +697,9 @@ const AdminOrderTable: React.FC = () => {
                   <button
                     type="submit"
                     className="py-2 px-3 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900"
-                    onClick={() => selectedOrderId && cancelOrder(selectedOrderId)}
+                    onClick={() =>
+                      selectedOrderId && cancelOrder(selectedOrderId)
+                    }
                   >
                     Yes, I'm sure
                   </button>
@@ -738,24 +744,34 @@ const AdminOrderTable: React.FC = () => {
                 {accountInfo ? (
                   <div className="text-left text-gray-600 dark:text-gray-300">
                     <p className="mb-2">
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">Username:</span>{" "}
+                      <span className="font-semibold text-gray-800 dark:text-gray-200">
+                        Username:
+                      </span>{" "}
                       {accountInfo.username}
                     </p>
                     <p className="mb-2">
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">Email:</span>{" "}
+                      <span className="font-semibold text-gray-800 dark:text-gray-200">
+                        Email:
+                      </span>{" "}
                       {accountInfo.email || "N/A"}
                     </p>
                     <p className="mb-2">
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">Role:</span>{" "}
+                      <span className="font-semibold text-gray-800 dark:text-gray-200">
+                        Role:
+                      </span>{" "}
                       {accountInfo.role || "N/A"}
                     </p>
                     <p className="mb-2">
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">Status:</span>{" "}
+                      <span className="font-semibold text-gray-800 dark:text-gray-200">
+                        Status:
+                      </span>{" "}
                       {accountInfo.is_active ? "Active" : "Inactive"}
                     </p>
                   </div>
                 ) : (
-                  <p className="text-gray-600 dark:text-gray-300">No account information available.</p>
+                  <p className="text-gray-600 dark:text-gray-300">
+                    No account information available.
+                  </p>
                 )}
                 <button
                   data-modal-toggle="accountInfoModal"
