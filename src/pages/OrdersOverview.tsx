@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const OrdersOverview: React.FC = () => {
+  const { token } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [total, setTotal] = useState(0);
@@ -22,7 +24,6 @@ const OrdersOverview: React.FC = () => {
   const fetchOrders = async () => {
     setLoading(true);
     setError(null);
-    const token = localStorage.getItem("token");
     
     if (!token) {
       setError("No authentication token found");
@@ -69,7 +70,6 @@ const OrdersOverview: React.FC = () => {
 
   // Cancel order function
   const cancelOrder = async (orderId) => {
-    const token = localStorage.getItem("token");
     if (!token) return;
 
     try {

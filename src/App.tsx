@@ -17,8 +17,10 @@ import OrdersOverview from "./pages/OrdersOverview";
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from "react-toastify";
 import { ShoppingCartProvider } from "./context/ShoppingCartContext";
-import AddressManager from "./components/TestProductTable";
 import AdminOrderTable from "./components/TestProductTable";
+import OrdersManagement from "./pages/OrderManagement";
+import NotFound from "./pages/NotFound";
+import Payment from "./pages/Payment";
 function App() {
   return (
     <AuthProvider>
@@ -49,8 +51,10 @@ function App() {
             <Route path="/order-confirmation" element={<OrderConfirmation />} />
             <Route path="/order-details/:orderId" element={<OrderDetails />} />
             <Route path="/orders-overview" element={<OrdersOverview />} />
-            <Route path="/test-products" element={<AddressManager />} />
-            <Route path="/order-adminview" element={<AdminOrderTable />} />
+            <Route path="/test-products" element={<AdminOrderTable />} />
+            <Route path="/orders-management" element={<OrdersManagement />} />
+            <Route path="/payment" element={<Payment />} />
+            <Route path="*" element={<NotFound />} />
           </Route>
           {/* </Route> */}
         </Routes>

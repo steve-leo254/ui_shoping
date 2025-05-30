@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios, { AxiosError } from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 // Define the AddressResponse type based on your backend model
 interface AddressResponse {
@@ -32,17 +33,12 @@ export const useFetchAddresses = (): FetchAddressesResult => {
   const [addresses, setAddresses] = useState<AddressResponse[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const {token} = useAuth();
 
   const fetchAddresses = async () => {
     setLoading(true);
     setError(null);
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setError('No authentication token found in localStorage');
-      setLoading(false);
-      return;
-    }
 
     try {
       const response = await axios.get<AddressResponse[]>(

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { formatCurrency } from "../cart/formatCurrency";
+import { useAuth } from "../context/AuthContext";
 
 // Define interfaces based on your pydantic models
 interface Product {
@@ -42,17 +43,24 @@ interface Order {
 }
 
 const OrderDetails: React.FC = () => {
+  const {token} = useAuth()
   const navigate = useNavigate();
   const params = useParams();
+  // Try different possible parameter names
   const orderId = params.orderId || params.id || params.order_id;
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Configuration variables for tax and delivery
-  const TAX_RATE = 0.08; // 8% tax rate
+  // Debug: Log all params to see what we're getting
+  console.log("All URL params:", params);
+  console.log("Extracted Order ID:", orderId);
+
+  // Configuration variables for delivery
   const DELIVERY_FEE = 150; // Fixed delivery fee
+
+  // image endpoint
 
   const imgEndPoint = "http://localhost:8000";
 
@@ -65,7 +73,6 @@ const OrderDetails: React.FC = () => {
       }
 
       try {
-        const token = localStorage.getItem("token");
         if (!token) {
           setError("Authentication required");
           setLoading(false);
@@ -146,19 +153,9 @@ const OrderDetails: React.FC = () => {
     );
   }
 
-  // Calculate financial details
-  const subtotal = order.order_details.reduce(
-    (sum, item) => sum + item.total_price,
-    0
-  );
-  const taxAmount = subtotal * TAX_RATE;
-  const calculatedTotal = subtotal + DELIVERY_FEE + taxAmount;
-
-  // Debug logging to check calculations
-  console.log("Subtotal:", subtotal);
-  console.log("Tax Amount:", taxAmount);
-  console.log("Delivery Fee:", DELIVERY_FEE);
-  console.log("Calculated Total:", calculatedTotal);
+  // Calculate subtotal (total from database minus tax and delivery)
+  const subtotal = order.total - DELIVERY_FEE;
+  const grandTotal = subtotal + DELIVERY_FEE;
 
   // Format the address
   const formatAddress = (address: Address | undefined) => {
@@ -279,14 +276,6 @@ const OrderDetails: React.FC = () => {
                   </dd>
                 </dl>
 
-                <dl className="flex items-center justify-between gap-4">
-                  <dt className="font-normal text-gray-500 dark:text-gray-400">
-                    Tax ({(TAX_RATE * 100).toFixed(0)}%)
-                  </dt>
-                  <dd className="font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(taxAmount)}
-                  </dd>
-                </dl>
               </div>
 
               <dl className="flex items-center justify-between gap-4 border-t border-gray-200 pt-2 dark:border-gray-700">
@@ -294,7 +283,7 @@ const OrderDetails: React.FC = () => {
                   Total
                 </dt>
                 <dd className="text-lg font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(subtotal + DELIVERY_FEE + taxAmount)}
+                  {formatCurrency(order.total)} or {formatCurrency(grandTotal)}
                 </dd>
               </dl>
             </div>
@@ -360,15 +349,15 @@ const OrderDetails: React.FC = () => {
                   <p className="text-sm font-normal text-gray-500 dark:text-gray-400">
                     <span
                       className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
-                        ${
-                          order.status === "delivered"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                            : order.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                            : order.status === "cancelled"
-                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                            : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-                        }`}
+            ${
+              order.status === "delivered"
+                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                : order.status === "pending"
+                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                : order.status === "cancelled"
+                ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+            }`}
                     >
                       {order.status.charAt(0).toUpperCase() +
                         order.status.slice(1)}
@@ -400,7 +389,7 @@ const OrderDetails: React.FC = () => {
                     Delivery Address
                   </h4>
                   <p className="text-sm font-normal text-gray-500 dark:text-gray-400">
-                    {formatAddress(order.address)}
+                    {formatAddress(order.address)}{" "}
                   </p>
                 </li>
 
@@ -425,18 +414,9 @@ const OrderDetails: React.FC = () => {
                     </svg>
                   </span>
                   <div>
-                    <h4 className="mb-0.5 font-semibold">
-                      Ordered on{" "}
-                      {new Date(order.datetime).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </h4>
+                    <h4 className="mb-0.5 font-semibold">19 Nov 2023, 10:45</h4>
                     <a href="#" className="text-sm font-medium hover:underline">
-                      Your Order number is {order.order_id}.
+                      Order confirmed - Receipt #647563
                     </a>
                   </div>
                 </li>
@@ -446,14 +426,14 @@ const OrderDetails: React.FC = () => {
                 <button
                   onClick={() => navigate("/store")}
                   type="button"
-                  className="w-full rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700"
+                  className="w-full rounded-lg  border border-gray-200 bg-white px-5  py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700"
                 >
                   Shop
                 </button>
 
                 <a
                   href="/orders-overview"
-                  className="mt-4 flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 sm:mt-0"
+                  className="bg-blue-600 mt-4 flex w-full items-center justify-center rounded-lg bg-primary-700  px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300  dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 sm:mt-0"
                 >
                   My Orders
                 </a>

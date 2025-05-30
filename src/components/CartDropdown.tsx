@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useShoppingCart } from "../context/ShoppingCartContext";
+import { formatCurrency } from "../cart/formatCurrency";
+
+
 type Product = {
   id: number;
   name: string;
@@ -60,7 +63,7 @@ const CartDropdown: React.FC = () => {
                 {cartProduct.product.name}
               </a>
               <p className="mt-0.5 truncate text-sm font-normal text-gray-500 dark:text-gray-400">
-                ${cartProduct.product.price}
+                {formatCurrency(cartProduct.product.price)}
               </p>
             </div>
             <div className="flex items-center justify-end gap-6">

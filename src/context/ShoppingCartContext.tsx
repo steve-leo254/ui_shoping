@@ -51,6 +51,9 @@ type ShoppingCartContext = {
   setMpesaPhone: (phone: string | null) => void;
   selectedAddress: Address | null;
   setSelectedAddress: (address: Address | null) => void;
+  deliveryFee: number;
+  subtotal: number;
+  total: number;
 };
 
 const ShoppingCartContext = createContext({} as ShoppingCartContext);
@@ -67,6 +70,15 @@ export function ShoppingCartProvider({ children }: ShoppingCartProviderProps) {
   const [selectedAddress, setSelectedAddress] = useLocalStorage<Address | null>("selected-address", null);
 
   const cartQuantity = cartItems.reduce((quantity, item) => item.quantity + quantity, 0);
+
+  // Calculate subtotal from cartItems
+  const subtotal = cartItems.reduce((total, item) => total + item.quantity * item.price, 0);
+
+  // Calculate delivery fee based on delivery method
+  const deliveryFee = deliveryMethod === "delivery" ? 150 : 0; // KSh 150 for delivery, 0 for pickup
+
+  // Calculate total
+  const total = subtotal + deliveryFee;
 
   function getItemQuantity(id: number) {
     return cartItems.find((item) => item.id === id)?.quantity || 0;
@@ -131,6 +143,9 @@ export function ShoppingCartProvider({ children }: ShoppingCartProviderProps) {
         setMpesaPhone,
         selectedAddress,
         setSelectedAddress,
+        deliveryFee,
+        subtotal,
+        total,
       }}
     >
       {children}

@@ -4,10 +4,8 @@ import CartItem from "../components/CartItem";
 import { formatCurrency } from "../cart/formatCurrency";
 
 const ShoppingCart: React.FC = () => {
-  const { cartItems, cartQuantity } = useShoppingCart();
+  const { cartItems, cartQuantity, subtotal } = useShoppingCart();
 
-  // Calculate subtotal directly from cartItems
-  const subtotal = cartItems.reduce((total, item) => total + item.quantity * item.price, 0);
 
   // Handle empty cart
   if (cartItems.length === 0) {

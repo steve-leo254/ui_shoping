@@ -1,4 +1,5 @@
 import React from "react";
+import { toast } from "react-toastify";
 import { useShoppingCart } from "../context/ShoppingCartContext";
 import { formatCurrency } from "../cart/formatCurrency";
 
@@ -23,13 +24,28 @@ const CartItem: React.FC<CartItemProps> = ({
     decreaseCartQuantity,
     removeFromCart,
   } = useShoppingCart();
-  // Define the image endpoint
+
+  // Handler functions with toast notifications
+  const handleIncreaseQuantity = () => {
+    increaseCartQuantity(id);
+    toast.success("Increased cart item quantity!");
+  };
+
+  const handleDecreaseQuantity = () => {
+    decreaseCartQuantity(id);
+    toast.info("Decreased cart item quantity!");
+  };
+
+  const handleRemoveFromCart = () => {
+    removeFromCart(id);
+    toast.error("Removed item from cart!");
+  };
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:p-6">
       <div className="space-y-4 md:flex md:items-center md:justify-between md:gap-6 md:space-y-0">
         {/* Product Image */}
         <a href="#" className="shrink-0 md:order-1">
-         
           <img className="h-20 w-20 dark" src={img_url} alt={name} />
         </a>
 
@@ -40,7 +56,7 @@ const CartItem: React.FC<CartItemProps> = ({
         <div className="flex items-center justify-between md:order-3 md:justify-end">
           <div className="flex items-center">
             <button
-              onClick={() => decreaseCartQuantity(id)}
+              onClick={handleDecreaseQuantity}
               type="button"
               id={`decrement-button-${id}`}
               data-input-counter-decrement={`counter-input-${id}`}
@@ -71,7 +87,7 @@ const CartItem: React.FC<CartItemProps> = ({
               readOnly
             />
             <button
-              onClick={() => increaseCartQuantity(id)}
+              onClick={handleIncreaseQuantity}
               type="button"
               id={`increment-button-${id}`}
               data-input-counter-increment={`counter-input-${id}`}
@@ -134,7 +150,7 @@ const CartItem: React.FC<CartItemProps> = ({
               Add to Favorites
             </button>
             <button
-              onClick={() => removeFromCart(id)}
+              onClick={handleRemoveFromCart}
               type="button"
               className="inline-flex items-center text-sm font-medium text-red-600 hover:underline dark:text-red-500"
             >

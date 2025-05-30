@@ -83,10 +83,6 @@ const DeliveryDetails: React.FC = () => {
       style: { border: '1px solid #3b82f6', color: '#111827' },
       progressStyle: { background: '#3b82f6' },
     });
-    // Example: Navigate to edit form or open modal
-    // navigate(`/edit-address/${addressId}`);
-    // or
-    // setModalOpen(true); // If using a modal like AddDeliveryDetails
   };
 
   // Format address for display

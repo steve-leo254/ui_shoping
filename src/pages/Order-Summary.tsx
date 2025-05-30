@@ -1,27 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useShoppingCart } from "../context/ShoppingCartContext";
 import { formatCurrency } from "../cart/formatCurrency";
 import { toast } from "react-toastify";
+import { useAuth } from "../context/AuthContext";
 
 const OrderSummary: React.FC = () => {
+  const { token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { cartItems, selectedAddress, clearCart } = useShoppingCart(); // Assuming ShoppingCartContext provides these
-  // Ensure cartItems and selectedAddress are defined
+  const { cartItems, selectedAddress, clearCart, total, subtotal, deliveryFee } = useShoppingCart();
   const addressId = selectedAddress?.id;
+  
+  // Add loading state to prevent double submission
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Extract data from navigation state
   const { deliveryMethod, mpesaPhone } = location.state || {};
-
-  // Calculate order summary values
-  const subtotal = cartItems.reduce(
-    (total, item) => total + item.quantity * item.price,
-    0
-  );
-  const deliveryFee = deliveryMethod === "delivery" ? 150 : 0; // Example logic
-  
-  const total = subtotal + deliveryFee ;
 
   // Function to format the address
   const formatAddress = (address) => {
@@ -30,11 +25,15 @@ const OrderSummary: React.FC = () => {
   };
 
   // Order Sending logic
-
   const handleSendOrder = async () => {
+    // Prevent double submission
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
-      // Retrieve the authentication token
-      const token = localStorage.getItem("token");
       if (!token) {
         toast.error("Please log in to place an order");
         navigate("/login");
@@ -57,7 +56,8 @@ const OrderSummary: React.FC = () => {
           id: item.id,
           quantity: item.quantity,
         })),
-        address_id: addressId,
+        address_id: addressId || null, // Ensure null if no address
+        delivery_fee: deliveryFee, // Include delivery_fee
       };
 
       // Make the API request
@@ -73,7 +73,17 @@ const OrderSummary: React.FC = () => {
       // Handle the response
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to create order");
+        const errorMessage = errorData.detail || "Failed to create order";
+        if (errorMessage.includes("Invalid address ID")) {
+          toast.error("Selected address is invalid");
+        } else if (errorMessage.includes("Product ID")) {
+          toast.error("One or more products are not available");
+        } else if (errorMessage.includes("Insufficient stock")) {
+          toast.error("Insufficient stock for one or more products");
+        } else {
+          toast.error(errorMessage);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -88,34 +98,38 @@ const OrderSummary: React.FC = () => {
       const phoneNumber =
         selectedAddress?.phone_number || "No phone number provided";
 
-      // Option 1: Use client-side date if API doesn't provide it
+      // Use client-side date since backend sets datetime automatically
       const orderDate = new Date().toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric",
       });
 
-      // Option 2: If the API returns the date, use data.order_date instead
-      // const orderDate = data.order_date || new Date().toLocaleDateString("en-US", { ... });
-
+      // Clear cart BEFORE navigation to prevent race conditions
+      clearCart();
+      
       toast.success("Order created successfully!");
-       // Navigate to OrderConfirmation with required fields
+      
+      // Navigate to OrderConfirmation with required fields
       navigate("/order-confirmation", {
         state: {
           orderId: data.order_id,
-          orderDate, // Use either client-side or API-provided date
+          orderDate,
           name,
           address: formattedAddress,
           phoneNumber,
+          deliveryFee, // Optionally pass deliveryFee for display
         },
+        replace: true, // Use replace to prevent going back to order summary
       });
-      clearCart();
-     
+      
     } catch (error) {
       toast.error(
         error.message || "An error occurred while creating the order"
       );
       console.error("Order submission error:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -226,7 +240,6 @@ const OrderSummary: React.FC = () => {
                         {formatCurrency(deliveryFee)}
                       </dd>
                     </dl>
-                    
                   </div>
                   <dl className="flex items-center justify-between gap-4 border-t border-gray-200 pt-2 dark:border-gray-700">
                     <dt className="text-lg font-bold text-gray-900 dark:text-white">
@@ -269,11 +282,42 @@ const OrderSummary: React.FC = () => {
                     Return to Shopping
                   </a>
                   <button
-                    onClick={() => handleSendOrder()}
-                    type="submit"
-                    className="bg-blue-600 mt-4 flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 sm:mt-0"
+                    onClick={handleSendOrder}
+                    type="button"
+                    disabled={isSubmitting}
+                    className={`mt-4 flex w-full items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium text-white focus:outline-none focus:ring-4 sm:mt-0 ${
+                      isSubmitting
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700 focus:ring-blue-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                    }`}
                   >
-                    Send the order
+                    {isSubmitting ? (
+                      <>
+                        <svg
+                          className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Processing...
+                      </>
+                    ) : (
+                      "Send the order"
+                    )}
                   </button>
                 </div>
               </div>

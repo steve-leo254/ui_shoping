@@ -3,6 +3,7 @@ import type { Product } from "../components/UseFetchProducts";
 import { useFetchProducts } from "../components/UseFetchProducts";
 import { useShoppingCart } from "../context/ShoppingCartContext";
 import { formatCurrency } from "../cart/formatCurrency";
+import { toast } from "react-toastify";
 
 type StoreItemProps = {
   id: number;
@@ -34,6 +35,20 @@ const ProductCards: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
+
+  // Helper function for adding to cart with toast notification
+  const addToCartWithToast = (product: Product) => {
+    // Add item to cart
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      img_url: imgEndPoint + product.img_url,
+    });
+
+    // Show toast notification
+    toast.success(`${product.name} added to cart!`);
+  };
 
   return (
     <>
@@ -285,7 +300,7 @@ const ProductCards: React.FC = () => {
               Error: {error}
             </div>
           ) : (
-            <div className="mb-4 grid gap-4 sm:grid-cols-3 md:mb-8 lg:grid-cols-4 xl:grid-cols-4">
+            <div className="mb-2 grid gap-3 sm:grid-cols-2 md:mb-6 lg:grid-cols-3 xl:grid-cols-3">
               {products.map((product) => (
                 <div
                   key={product.id}
@@ -457,14 +472,7 @@ const ProductCards: React.FC = () => {
                       <button
                         type="button"
                         className="bg-blue-600 inline-flex items-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
-                        onClick={() =>
-                          addToCart({
-                            id: product.id,
-                            name: product.name,
-                            price: product.price,
-                            img_url: imgEndPoint + product.img_url,
-                          })
-                        }
+                        onClick={() => addToCartWithToast(product)}
                       >
                         <svg
                           className="-ms-2 me-2 h-5 w-5"
