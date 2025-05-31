@@ -52,8 +52,8 @@ function App() {
             <Route path="/order-confirmation" element={<OrderConfirmation />} />
             <Route path="/order-details/:orderId" element={<OrderDetails />} />
             <Route path="/orders-overview" element={<OrdersOverview />} />
+            <Route path="/AddCategory"   element={<CategoryForm/>} />
             <Route path="/test-products" element={<AdminOrderTable />} />
-            <Route path="/AddCategory" element={<CategoryForm/>} />
             <Route path="/orders-management" element={<OrdersManagement />} />
             <Route path="/payment" element={<Payment />} />
             <Route path="*" element={<NotFound />} />

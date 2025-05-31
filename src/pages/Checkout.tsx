@@ -1,11 +1,13 @@
 // Checkout.tsx
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
+import axios from "axios";
 import { useFetchAddresses } from "../components/useFetchAddresses";
 import DeliveryDetails from "../components/DeliveryDetails";
 import AddDeliveryDetails from "../components/AddDeliveryDetails";
 import { useShoppingCart } from "../context/ShoppingCartContext";
+import { useAuth } from "../context/AuthContext";
 import { formatCurrency } from "../cart/formatCurrency";
 import DeliveryOptions from "../components/deliveryOptions";
 import PaymentOptions from "../components/paymentOptions";
@@ -13,6 +15,9 @@ import PaymentOptions from "../components/paymentOptions";
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { token } = useAuth();
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  
   const {
     cartItems,
     deliveryMethod,
@@ -20,14 +25,20 @@ const Checkout: React.FC = () => {
     selectedAddress,
     setSelectedAddress,
     deliveryFee,
+    subtotal,
+    clearCart,
   } = useShoppingCart();
+  
   const { addresses, loading, error } = useFetchAddresses();
 
-  // Extract order data from navigation state
-  const { orderId, orderCreated, subtotal } = location.state || {};
-
+  // Extract order data from navigation state (if coming from a previous order creation)
+  const { orderId: existingOrderId, orderCreated, subtotal: stateSubtotal } = location.state || {};
+  
+  // Use cart subtotal if no state subtotal provided
+  const orderSubtotal = stateSubtotal || subtotal;
+  
   // Calculate total
-  const total = subtotal + deliveryFee;
+  const total = orderSubtotal + deliveryFee;
 
   // Set default address as selectedAddress if none is selected
   useEffect(() => {
@@ -41,16 +52,62 @@ const Checkout: React.FC = () => {
 
   // Show success message if order was just created
   useEffect(() => {
-    if (orderCreated && orderId) {
-      toast.success(`Order #${orderId} created successfully! Complete your payment details.`);
+    if (orderCreated && existingOrderId) {
+      toast.success(`Order #${existingOrderId} created successfully! Complete your payment details.`);
     }
-  }, [orderCreated, orderId]);
+  }, [orderCreated, existingOrderId]);
 
   // Check if the form is valid
   const isFormValid = deliveryMethod && (deliveryMethod !== "delivery" || selectedAddress) && paymentMethod;
 
-  // Handle Proceed to Payment or Order Summary
-  const handleProceed = () => {
+  // Create order function
+  const createOrder = async () => {
+    if (!token) {
+      toast.error("You must be logged in to create an order");
+      return null;
+    }
+
+    try {
+      setIsCreatingOrder(true);
+      
+      // Prepare order payload
+      const orderPayload = {
+        cart: cartItems.map(item => ({
+          id: item.id,
+          quantity: item.quantity
+        })),
+        delivery_fee: deliveryFee,
+        address_id: deliveryMethod === "delivery" ? selectedAddress?.id : null,
+      };
+
+      const response = await axios.post(
+        "http://localhost:8000/create_order",
+        orderPayload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (response.data && response.data.order_id) {
+        // Clear the cart after successful order creation
+        clearCart();
+        return response.data.order_id;
+      }
+      
+      throw new Error("No order ID returned");
+    } catch (error: any) {
+      console.error("Error creating order:", error);
+      toast.error(error.response?.data?.detail || "Failed to create order");
+      return null;
+    } finally {
+      setIsCreatingOrder(false);
+    }
+  };
+
+  // Handle Proceed to Payment or Order Confirmation
+  const handleProceed = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!isFormValid) {
       if (!deliveryMethod) {
         toast.error("Please select a delivery method");
@@ -62,15 +119,32 @@ const Checkout: React.FC = () => {
       return;
     }
 
+    // Create order first if we don't have an existing order ID
+    let orderId = existingOrderId;
+    if (!orderId && cartItems.length > 0) {
+      orderId = await createOrder();
+      if (!orderId) {
+        return; // Order creation failed
+      }
+    }
+
+    if (!orderId) {
+      toast.error("No valid order found");
+      return;
+    }
+
     if (paymentMethod === "pay-now") {
       navigate("/payment", {
         state: {
-          subtotal,
+          subtotal: orderSubtotal,
           orderId,
           orderCreated: true,
+          deliveryFee,
+          total,
         },
       });
     } else {
+      // Pay later - go directly to order confirmation
       navigate("/order-confirmation", {
         state: {
           orderId,
@@ -79,18 +153,24 @@ const Checkout: React.FC = () => {
             month: "long",
             day: "numeric",
           }),
-          name: selectedAddress ? `${selectedAddress.first_name} ${selectedAddress.last_name}` : "No name provided",
-          address: selectedAddress ? `${selectedAddress.address}, ${selectedAddress.city}, ${selectedAddress.region}` : "No address selected",
-          phoneNumber: selectedAddress?.phone_number || "No phone number provided",
+          name: selectedAddress ? `${selectedAddress.first_name} ${selectedAddress.last_name}` : "Store Pickup",
+          address: deliveryMethod === "delivery" && selectedAddress 
+            ? `${selectedAddress.address}, ${selectedAddress.city}, ${selectedAddress.region}` 
+            : "Store Pickup",
+          phoneNumber: selectedAddress?.phone_number || "N/A",
           deliveryFee,
+          subtotal: orderSubtotal,
+          total,
+          deliveryMethod,
+          paymentMethod,
         },
         replace: true,
       });
     }
   };
 
-  // If no order ID and cart is empty (user navigated directly), redirect to cart
-  if (!orderId && cartItems.length === 0) {
+  // If no existing order and cart is empty, redirect to cart
+  if (!existingOrderId && cartItems.length === 0) {
     return (
       <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-16">
         <div className="mx-auto max-w-screen-xl px-4 2xl:px-0">
@@ -126,16 +206,13 @@ const Checkout: React.FC = () => {
       <form
         action="#"
         className="mx-auto max-w-screen-xl px-4 2xl:px-0"
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleProceed();
-        }}
+        onSubmit={handleProceed}
       >
         {/* Order ID Display */}
-        {orderId && (
+        {existingOrderId && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/20 dark:border-green-800">
             <p className="text-green-800 dark:text-green-200">
-              <span className="font-medium">Order ID:</span> #{orderId}
+              <span className="font-medium">Order ID:</span> #{existingOrderId}
             </p>
           </div>
         )}
@@ -157,9 +234,9 @@ const Checkout: React.FC = () => {
               >
                 <path
                   stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
                   d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
                 />
               </svg>
@@ -182,9 +259,9 @@ const Checkout: React.FC = () => {
               >
                 <path
                   stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
                   d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
                 />
               </svg>
@@ -203,9 +280,9 @@ const Checkout: React.FC = () => {
             >
               <path
                 stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
                 d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
               />
             </svg>
@@ -239,9 +316,9 @@ const Checkout: React.FC = () => {
                     >
                       <path
                         stroke="currentColor"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
                         d="M5 12h14m-7 7V5"
                       />
                     </svg>
@@ -262,7 +339,7 @@ const Checkout: React.FC = () => {
                     Subtotal
                   </dt>
                   <dd className="text-base font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(subtotal)}
+                    {formatCurrency(orderSubtotal)}
                   </dd>
                 </dl>
                 <dl className="flex items-center justify-between gap-4 py-3">
@@ -286,10 +363,16 @@ const Checkout: React.FC = () => {
             <div className="space-y-3">
               <button
                 type="submit"
-                disabled={!isFormValid}
-                className={`bg-blue-600 flex w-full items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 ${!isFormValid ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!isFormValid || isCreatingOrder}
+                className={`bg-blue-600 flex w-full items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800 ${(!isFormValid || isCreatingOrder) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {paymentMethod === "pay-now" ? "Proceed to Payment" : "Complete Order"}
+                {isCreatingOrder ? (
+                  "Creating Order..."
+                ) : paymentMethod === "pay-now" ? (
+                  "Proceed to Payment"
+                ) : (
+                  "Complete Order"
+                )}
               </button>
               <p className="text-sm font-normal text-gray-500 dark:text-gray-400">
                 One or more items in your cart require an account.{" "}
