@@ -21,13 +21,14 @@ import AdminOrderTable from "./components/TestProductTable";
 import OrdersManagement from "./pages/OrderManagement";
 import NotFound from "./pages/NotFound";
 import Payment from "./pages/Payment";
+import CategoryForm from "./components/AddCategory";
 function App() {
   return (
     <AuthProvider>
       <ShoppingCartProvider>
       <Router>
         <ToastContainer
-          position="top-right"
+          position="top-left"
           autoClose={3000}
           hideProgressBar={true}
           newestOnTop={true}
@@ -52,6 +53,7 @@ function App() {
             <Route path="/order-details/:orderId" element={<OrderDetails />} />
             <Route path="/orders-overview" element={<OrdersOverview />} />
             <Route path="/test-products" element={<AdminOrderTable />} />
+            <Route path="/AddCategory" element={<CategoryForm/>} />
             <Route path="/orders-management" element={<OrdersManagement />} />
             <Route path="/payment" element={<Payment />} />
             <Route path="*" element={<NotFound />} />

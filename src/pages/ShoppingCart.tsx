@@ -1,16 +1,106 @@
-import React from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useShoppingCart } from "../context/ShoppingCartContext";
+import { useAuth } from "../context/AuthContext";
 import CartItem from "../components/CartItem";
 import { formatCurrency } from "../cart/formatCurrency";
+import { toast } from "react-toastify";
 
 const ShoppingCart: React.FC = () => {
-  const { cartItems, cartQuantity, subtotal } = useShoppingCart();
-
+  const navigate = useNavigate();
+  const { token } = useAuth();
+  const { cartItems, cartQuantity, subtotal, selectedAddress, deliveryFee, clearCart } = useShoppingCart();
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
   // Handle empty cart
   if (cartItems.length === 0) {
     return <div className="text-center">Your cart is empty.</div>;
   }
+
+  // Order creation logic moved from OrderSummary
+  const handleCheckout = async () => {
+    // Prevent double submission
+    if (isCreatingOrder) {
+      return;
+    }
+
+    setIsCreatingOrder(true);
+
+    try {
+      if (!token) {
+        toast.error("Please log in to place an order");
+        navigate("/login");
+        return;
+      }
+
+      // Validate required data
+      if (!cartItems || cartItems.length === 0) {
+        toast.error("Your cart is empty");
+        return;
+      }
+
+      // Prepare the payload for the API
+      const payload = {
+        cart: cartItems.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+        })),
+        address_id: selectedAddress?.id || null,
+        delivery_fee: deliveryFee,
+      };
+
+      // Make the API request to create order
+      const response = await fetch("http://localhost:8000/create_order", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // Handle the response
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = errorData.detail || "Failed to create order";
+        
+        if (errorMessage.includes("Invalid address ID")) {
+          toast.error("Selected address is invalid");
+        } else if (errorMessage.includes("Product ID")) {
+          toast.error("One or more products are not available");
+        } else if (errorMessage.includes("Insufficient stock")) {
+          toast.error("Insufficient stock for one or more products");
+        } else {
+          toast.error(errorMessage);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+
+      // Clear cart after successful order creation
+      clearCart();
+      
+      toast.success("Order created successfully!");
+      
+      // Navigate to checkout with the order ID
+      navigate("/checkout", {
+        state: {
+          subtotal: subtotal,
+          orderId: data.order_id,
+          orderCreated: true,
+        },
+      });
+      
+    } catch (error) {
+      toast.error(
+        error.message || "An error occurred while creating the order"
+      );
+      console.error("Order creation error:", error);
+    } finally {
+      setIsCreatingOrder(false);
+    }
+  };
 
   return (
     <section className="bg-white py-8 antialiased dark:bg-gray-900 md:py-16">
@@ -63,12 +153,43 @@ const ShoppingCart: React.FC = () => {
                 </dl>
               </div>
 
-              <a
-                href="/checkout"
-                className="bg-blue-600 flex w-full items-center justify-center rounded-lg bg-primary-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-800 focus:outline-none focus:ring-4 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+              <button
+                onClick={handleCheckout}
+                disabled={isCreatingOrder}
+                className={`flex w-full items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium text-white focus:outline-none focus:ring-4 ${
+                  isCreatingOrder
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 focus:ring-blue-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+                }`}
               >
-                Checkout ({formatCurrency(subtotal)})
-              </a>
+                {isCreatingOrder ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Creating Order...
+                  </>
+                ) : (
+                  `Checkout (${formatCurrency(subtotal)})`
+                )}
+              </button>
 
               <div className="flex items-center justify-center gap-2">
                 <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
