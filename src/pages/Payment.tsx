@@ -15,6 +15,25 @@ interface PaymentData {
   amount: number;
 }
 
+// Utility function to validate Kenyan phone numbers
+const validateKenyanPhone = (phone: string) => {
+  const phoneRegex = /^(?:254[17]\d{8}|0[17]\d{8})$/;
+  if (!phoneRegex.test(phone)) {
+    return { isValid: false, error: "Please enter a valid Kenyan phone number (e.g., 0712345678 or 254712345678)" };
+  }
+
+  let formatted = phone;
+  if (phone.startsWith("0")) {
+    formatted = "254" + phone.substring(1);
+  }
+
+  if (formatted.length !== 12) {
+    return { isValid: false, error: "Invalid phone number length after formatting." };
+  }
+
+  return { isValid: true, formatted };
+};
+
 const Payment = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -35,31 +54,18 @@ const Payment = () => {
     setLoading(true);
     setError("");
 
-    // Validate phone number (must be 10 digits starting with 0 or 12 digits starting with 254)
-    const phoneRegex = /^(?:254[17]\d{8}|0[17]\d{8})$/;
-    if (!phoneRegex.test(phoneNumber)) {
-      setError("Please enter a valid Kenyan phone number (e.g., 0712345678 or 254712345678)");
-      setLoading(false);
-      return;
-    }
-
-    // Format phone number to 254xxxxxxxxx
-    let formattedPhone = phoneNumber;
-    if (phoneNumber.startsWith("0")) {
-      formattedPhone = "254" + phoneNumber.substring(1);
-    }
-
-    // Ensure formatted phone number is 12 digits
-    if (formattedPhone.length !== 12) {
-      setError("Invalid phone number length after formatting.");
+    // Validate phone number
+    const validation = validateKenyanPhone(phoneNumber);
+    if (!validation.isValid) {
+      setError(validation.error || "Invalid phone number");
       setLoading(false);
       return;
     }
 
     const paymentData: PaymentData = {
       order_id: orderId,
-      phone_number: formattedPhone,
-      amount: Math.floor(total), // Ensure whole number
+      phone_number: validation.formatted!,
+      amount: Math.floor(total),
     };
 
     try {
@@ -72,17 +78,42 @@ const Payment = () => {
         body: JSON.stringify(paymentData),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to initiate payment");
+        // Handle specific error cases
+        switch (response.status) {
+          case 400:
+            setError(result.detail || "Invalid payment details");
+            break;
+          case 404:
+            setError("Order not found");
+            break;
+          case 429:
+            setError("Too many requests. Please try again later");
+            break;
+          case 500:
+            setError("Server error. Please try again");
+            break;
+          default:
+            setError(result.detail || "Payment initiation failed");
+        }
+        setLoading(false);
+        return;
       }
 
-      const result = await response.json();
       setCheckoutRequestID(result.CheckoutRequestID);
       setPolling(true);
+
+      // Show success message
       alert("Please check your phone to complete the M-Pesa payment.");
     } catch (err: any) {
-      setError(err.message || "Failed to initiate payment. Please try again.");
+      // Handle network errors
+      if (err.name === "TypeError" && err.message.includes("fetch")) {
+        setError("Network error. Please check your connection and try again.");
+      } else {
+        setError(err.message || "Failed to initiate payment. Please try again.");
+      }
       setLoading(false);
     }
   };
@@ -92,7 +123,6 @@ const Payment = () => {
     let timeout: NodeJS.Timeout;
 
     if (polling && orderId) {
-      // Set timeout for polling (2 minutes)
       timeout = setTimeout(() => {
         setPolling(false);
         setPollingTimeout(true);
@@ -101,11 +131,12 @@ const Payment = () => {
 
       interval = setInterval(async () => {
         try {
-          const response = await fetch(`http://localhost:8000/check_payment_status/${orderId}`, {
+          const response = await fetch(`http://127.0.0.1:8000/check_payment_status/${orderId}`, {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
           });
+          if (!response.ok) throw new Error("Network response was not ok");
           const data = await response.json();
           if (data.status === "ACCEPTED") {
             setPolling(false);
@@ -130,11 +161,15 @@ const Payment = () => {
                 transactionId: checkoutRequestID,
               },
             });
-          } else if (data.status === "REJECTED") {
+          } else if (data.status === "REJECTED" || data.status === "CANCELED") {
             setPolling(false);
             clearInterval(interval);
             clearTimeout(timeout);
-            setError("Payment was rejected. Please try again.");
+            setError(
+              data.status === "CANCELED"
+                ? "Payment was canceled. Please try again."
+                : "Payment was rejected. Please try again."
+            );
           }
         } catch (err) {
           setPolling(false);
@@ -143,12 +178,12 @@ const Payment = () => {
           setError("Error checking payment status. Please try again.");
         }
       }, 5000); // Poll every 5 seconds
-    }
 
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
+    }
   }, [polling, orderId, navigate, checkoutRequestID, selectedAddress, total]);
 
   if (!orderId || !subtotal) {
